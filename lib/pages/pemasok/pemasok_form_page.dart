@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../models/pemasok.dart';
+import '../../services/api_services.dart';
 
 class PemasokFormPage extends StatefulWidget {
-  const PemasokFormPage({super.key});
+  final Pemasok? pemasok;
+
+  const PemasokFormPage({super.key, this.pemasok});
 
   @override
   State<PemasokFormPage> createState() => _PemasokFormPageState();
@@ -10,20 +13,53 @@ class PemasokFormPage extends StatefulWidget {
 
 class _PemasokFormPageState extends State<PemasokFormPage> {
   final _formKey = GlobalKey<FormState>();
-
   final _namaController = TextEditingController();
   final _alamatController = TextEditingController();
   final _kontakController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.pemasok != null) {
+      _namaController.text = widget.pemasok!.namaPemasok;
+      _alamatController.text = widget.pemasok!.alamat;
+      _kontakController.text = widget.pemasok!.kontak;
+    }
+  }
+
+  Future<void> _simpanData() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final pemasok = Pemasok(
+      idPemasok: widget.pemasok?.idPemasok,
+      namaPemasok: _namaController.text,
+      alamat: _alamatController.text,
+      kontak: _kontakController.text,
+    );
+
+    bool success;
+    if (widget.pemasok == null) {
+      success = await ApiService.tambahPemasok(pemasok);
+    } else {
+      success = await ApiService.updatePemasok(pemasok);
+    }
+
+    if (success && mounted) {
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Gagal menyimpan data")),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isEdit = widget.pemasok != null;
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF5F8D4E),
-        title: const Text(
-          "Tambah Pemasok",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: Text(isEdit ? "Edit Pemasok" : "Tambah Pemasok"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -33,43 +69,26 @@ class _PemasokFormPageState extends State<PemasokFormPage> {
             children: [
               TextFormField(
                 controller: _namaController,
-                decoration: const InputDecoration(labelText: 'Nama Pemasok'),
-                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                decoration: const InputDecoration(labelText: "Nama Pemasok"),
+                validator: (value) => value!.isEmpty ? "Nama wajib diisi" : null,
               ),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _alamatController,
-                decoration: const InputDecoration(labelText: 'Alamat'),
-                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                decoration: const InputDecoration(labelText: "Alamat"),
+                validator: (value) => value!.isEmpty ? "Alamat wajib diisi" : null,
               ),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _kontakController,
-                decoration: const InputDecoration(labelText: 'Kontak (Telepon/Email)'),
+                decoration: const InputDecoration(labelText: "Kontak (Telepon / Email)"),
+                validator: (value) => value!.isEmpty ? "Kontak wajib diisi" : null,
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE84C3D),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    final newPemasok = Pemasok(
-                      id: DateTime.now().millisecondsSinceEpoch,
-                      namaPemasok: _namaController.text,
-                      alamat: _alamatController.text,
-                      kontak: _kontakController.text,
-                    );
-                    Navigator.pop(context, newPemasok);
-                  }
-                },
-                icon: const Icon(Icons.save, color: Colors.white),
-                label: const Text(
-                  "Simpan Data",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
+                onPressed: _simpanData,
+                icon: const Icon(Icons.save),
+                label: const Text("Simpan"),
               ),
             ],
           ),

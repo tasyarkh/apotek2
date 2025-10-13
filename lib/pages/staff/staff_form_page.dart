@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../models/staff.dart';
+import '../../services/api_services.dart';
 
 class StaffFormPage extends StatefulWidget {
-  const StaffFormPage({super.key});
+  final Staff? staff;
+
+  const StaffFormPage({super.key, this.staff});
 
   @override
   State<StaffFormPage> createState() => _StaffFormPageState();
@@ -10,21 +13,53 @@ class StaffFormPage extends StatefulWidget {
 
 class _StaffFormPageState extends State<StaffFormPage> {
   final _formKey = GlobalKey<FormState>();
-
   final _namaController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.staff != null) {
+      _namaController.text = widget.staff!.namaStaff;
+      _usernameController.text = widget.staff!.username;
+      _passwordController.text = widget.staff!.password;
+    }
+  }
+
+  Future<void> _simpanData() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final staff = Staff(
+      idStaff: widget.staff?.idStaff,
+      namaStaff: _namaController.text,
+      username: _usernameController.text,
+      password: _passwordController.text,
+    );
+
+    bool success;
+    if (widget.staff == null) {
+      success = await ApiService.tambahStaff(staff);
+    } else {
+      success = await ApiService.updateStaff(staff);
+    }
+
+    if (success && mounted) {
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Gagal menyimpan data")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.staff != null;
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF5F8D4E),
-        title: const Text(
-          "Tambah Staff",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: Text(isEdit ? "Edit Staff" : "Tambah Staff"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -34,51 +69,27 @@ class _StaffFormPageState extends State<StaffFormPage> {
             children: [
               TextFormField(
                 controller: _namaController,
-                decoration: const InputDecoration(labelText: 'Nama Staff'),
-                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                decoration: const InputDecoration(labelText: "Nama Staff"),
+                validator: (value) => value!.isEmpty ? "Nama wajib diisi" : null,
               ),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Username'),
-                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                decoration: const InputDecoration(labelText: "Username"),
+                validator: (value) => value!.isEmpty ? "Username wajib diisi" : null,
               ),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _passwordController,
-                obscureText: !_isVisible,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  suffixIcon: IconButton(
-                    icon: Icon(_isVisible ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _isVisible = !_isVisible),
-                  ),
-                ),
-                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "Password"),
+                validator: (value) => value!.isEmpty ? "Password wajib diisi" : null,
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE84C3D),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    final newStaff = Staff(
-                      id: DateTime.now().millisecondsSinceEpoch,
-                      namaStaff: _namaController.text,
-                      username: _usernameController.text,
-                      password: _passwordController.text,
-                    );
-                    Navigator.pop(context, newStaff);
-                  }
-                },
-                icon: const Icon(Icons.save, color: Colors.white),
-                label: const Text(
-                  "Simpan Data",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
+                onPressed: _simpanData,
+                icon: const Icon(Icons.save),
+                label: const Text("Simpan"),
               ),
             ],
           ),

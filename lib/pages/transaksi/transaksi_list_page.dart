@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/transaksi.dart';
+import '../../services/api_services.dart';
 import 'transaksi_form_page.dart';
+import 'detail_transaksi.dart';
 
 class TransaksiListPage extends StatefulWidget {
   const TransaksiListPage({super.key});
@@ -10,84 +12,109 @@ class TransaksiListPage extends StatefulWidget {
 }
 
 class _TransaksiListPageState extends State<TransaksiListPage> {
-  List<Transaksi> transaksiList = [
-    Transaksi(
-      id: 1,
-      tanggal: DateTime(2025, 10, 1, 9, 30),
-      jenisTransaksi: 'PEMBELIAN',
-      namaPelanggan: null,
-      kontakPelanggan: null,
-      idStaff: 1,
-      idPemasok: 2,
-    ),
-    Transaksi(
-      id: 2,
-      tanggal: DateTime(2025, 10, 3, 14, 10),
-      jenisTransaksi: 'PENJUALAN',
-      namaPelanggan: 'Siti Rahma',
-      kontakPelanggan: '08123456789',
-      idStaff: 2,
-      idPemasok: null,
-    ),
-  ];
+  late Future<List<Transaksi>> _transaksiList;
 
-  String formatTanggal(DateTime date) {
-    return "${date.day}-${date.month}-${date.year} ${date.hour}:${date.minute}";
+  @override
+  void initState() {
+    super.initState();
+    _transaksiList = ApiService.getTransaksiList();
+  }
+
+  void _refreshData() {
+    setState(() {
+      _transaksiList = ApiService.getTransaksiList();
+    });
+  }
+
+  void _hapusTransaksi(int id) async {
+    bool success = await ApiService.hapusTransaksi(id);
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Transaksi berhasil dihapus')),
+      );
+      _refreshData();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF5F8D4E),
-        title: const Text(
-          "Daftar Transaksi",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Daftar Transaksi'),
       ),
-      body: ListView.builder(
-        itemCount: transaksiList.length,
-        itemBuilder: (context, index) {
-          final t = transaksiList[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              title: Text(
-                t.jenisTransaksi,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                "Tanggal: ${formatTanggal(t.tanggal)}\n"
-                "Staff ID: ${t.idStaff} ${t.namaPelanggan != null ? '\nPelanggan: ${t.namaPelanggan}' : ''}",
-              ),
-              trailing: Icon(
-                t.jenisTransaksi == 'PENJUALAN'
-                    ? Icons.shopping_cart
-                    : t.jenisTransaksi == 'PEMBELIAN'
-                    ? Icons.local_shipping
-                    : Icons.undo,
-                color: Colors.grey[700],
-              ),
-            ),
+      body: FutureBuilder<List<Transaksi>>(
+        future: _transaksiList,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Terjadi kesalahan: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('Belum ada transaksi'));
+          }
+
+          final transaksiList = snapshot.data!;
+          return ListView.builder(
+            itemCount: transaksiList.length,
+            itemBuilder: (context, index) {
+              final trx = transaksiList[index];
+              return Card(
+                margin: const EdgeInsets.all(8),
+                child: ListTile(
+                  title: Text('Transaksi #${trx.idTransaksi} - ${trx.jenisTransaksi}'),
+                  subtitle: Text('Tanggal: ${trx.tanggal}\nStaff ID: ${trx.idStaff}'),
+                  isThreeLine: true,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.list_alt),
+                        color: Colors.indigo,
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                DetailTransaksiPage(idTransaksi: trx.idTransaksi!),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        color: Colors.orange,
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  TransaksiFormPage(transaksi: trx),
+                            ),
+                          );
+                          _refreshData();
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        color: Colors.red,
+                        onPressed: () => _hapusTransaksi(trx.idTransaksi!),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFFE84C3D),
         child: const Icon(Icons.add),
         onPressed: () async {
-          final result = await Navigator.push(
+          await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const TransaksiFormPage()),
+            MaterialPageRoute(builder: (context) => const TransaksiFormPage()),
           );
-          if (result != null && result is Transaksi) {
-            setState(() {
-              transaksiList.add(result);
-            });
-          }
+          _refreshData();
         },
       ),
     );
