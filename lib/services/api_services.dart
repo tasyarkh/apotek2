@@ -8,9 +8,8 @@ import '../models/staff.dart';
 import '../models/transaksi.dart';
 import '../models/detail_transaksi.dart';
 
-
 class ApiService {
-   static const String baseUrl = "http://localhost/apotek_apiver2/";
+  static const String baseUrl = "http://localhost/apotek_apiver2/";
 
   // =======================================================
   // 🧾 OBAT
@@ -49,8 +48,9 @@ class ApiService {
   // =======================================================
   // 🧾 BATCH OBAT
   // =======================================================
+
   static Future<List<Batch>> getBatchList() async {
-    final response = await http.get(Uri.parse("${baseUrl}batch.php"));
+    final response = await http.get(Uri.parse("${baseUrl}batch_obat.php"));
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
       return data.map((e) => Batch.fromJson(e)).toList();
@@ -61,7 +61,7 @@ class ApiService {
 
   static Future<bool> tambahBatch(Batch batch) async {
     final response = await http.post(
-      Uri.parse("${baseUrl}batch.php"),
+      Uri.parse("${baseUrl}batch_obat.php"),
       body: batch.toJson(),
     );
     return response.statusCode == 200;
@@ -69,14 +69,16 @@ class ApiService {
 
   static Future<bool> updateBatch(Batch batch) async {
     final response = await http.put(
-      Uri.parse("${baseUrl}batch.php?id=${batch.idBatch}"),
+      Uri.parse("${baseUrl}batch_obat.php?id=${batch.idBatch}"),
       body: batch.toJson(),
     );
     return response.statusCode == 200;
   }
 
   static Future<bool> hapusBatch(int id) async {
-    final response = await http.delete(Uri.parse("${baseUrl}batch.php?id=$id"));
+    final response = await http.delete(
+      Uri.parse("${baseUrl}batch_obat.php?id=$id"),
+    );
     return response.statusCode == 200;
   }
 
@@ -110,90 +112,87 @@ class ApiService {
   }
 
   static Future<bool> hapusPemasok(int id) async {
-    final response = await http.delete(Uri.parse("${baseUrl}pemasok.php?id=$id"));
+    final response = await http.delete(
+      Uri.parse("${baseUrl}pemasok.php?id=$id"),
+    );
     return response.statusCode == 200;
   }
 
   // =======================================================
   // 🧾 STAFF
   // =======================================================
-    static Future<List<Staff>> getStaffList() async {
-      final response = await http.get(Uri.parse("${baseUrl}staff.php"));
+  static Future<List<Staff>> getStaffList() async {
+    final response = await http.get(Uri.parse("${baseUrl}staff.php"));
 
-      if (response.statusCode == 200) {
-        final body = response.body;
-        debugPrint("Response staff list: $body");
+    if (response.statusCode == 200) {
+      final body = response.body;
+      debugPrint("Response staff list: $body");
 
-        try {
-          final decoded = json.decode(body);
+      try {
+        final decoded = json.decode(body);
 
-          // kalau API mengembalikan {"data": [...]} maka ambil key "data"
-          final List data = decoded is List
-              ? decoded
-              : (decoded['data'] ?? []);
+        // kalau API mengembalikan {"data": [...]} maka ambil key "data"
+        final List data = decoded is List ? decoded : (decoded['data'] ?? []);
 
-          return data.map((e) => Staff.fromJson(e)).toList();
-        } catch (e) {
-          debugPrint("Parsing error staff: $e");
-          return [];
-        }
-      } else {
-        throw Exception("Gagal memuat data staff (${response.statusCode})");
+        return data.map((e) => Staff.fromJson(e)).toList();
+      } catch (e) {
+        debugPrint("Parsing error staff: $e");
+        return [];
       }
+    } else {
+      throw Exception("Gagal memuat data staff (${response.statusCode})");
     }
+  }
 
-    static Future<bool> tambahStaff(Staff staff) async {
-      final response = await http.post(
-        Uri.parse("${baseUrl}staff.php"),
-        body: staff.toJson(),
-      );
-      debugPrint("Tambah staff response: ${response.body}");
-      
-      // tambahkan pengecekan respons agar tidak TypeError
-      try {
-        final decoded = json.decode(response.body);
-        if (decoded is Map && decoded['success'] == true) {
-          return true;
-        }
-      } catch (_) {}
-      return response.statusCode == 200;
-    }
+  static Future<bool> tambahStaff(Staff staff) async {
+    final response = await http.post(
+      Uri.parse("${baseUrl}staff.php"),
+      body: staff.toJson(),
+    );
+    debugPrint("Tambah staff response: ${response.body}");
 
-    static Future<bool> updateStaff(Staff staff) async {
-      final response = await http.put(
-        Uri.parse("${baseUrl}staff.php?id=${staff.idStaff}"),
-        body: staff.toJson(),
-      );
-      debugPrint("Update staff response: ${response.body}");
+    // tambahkan pengecekan respons agar tidak TypeError
+    try {
+      final decoded = json.decode(response.body);
+      if (decoded is Map && decoded['success'] == true) {
+        return true;
+      }
+    } catch (_) {}
+    return response.statusCode == 200;
+  }
 
-      try {
-        final decoded = json.decode(response.body);
-        if (decoded is Map && decoded['success'] == true) {
-          return true;
-        }
-      } catch (_) {}
-      return response.statusCode == 200;
-    }
+  static Future<bool> updateStaff(Staff staff) async {
+    final response = await http.put(
+      Uri.parse("${baseUrl}staff.php?id=${staff.idStaff}"),
+      body: staff.toJson(),
+    );
+    debugPrint("Update staff response: ${response.body}");
 
-    static Future<bool> hapusStaff(int id) async {
-      final response = await http.delete(Uri.parse("${baseUrl}staff.php?id=$id"));
-      debugPrint("Hapus staff response: ${response.body}");
+    try {
+      final decoded = json.decode(response.body);
+      if (decoded is Map && decoded['success'] == true) {
+        return true;
+      }
+    } catch (_) {}
+    return response.statusCode == 200;
+  }
 
-      try {
-        final decoded = json.decode(response.body);
-        if (decoded is Map && decoded['success'] == true) {
-          return true;
-        }
-      } catch (_) {}
-      return response.statusCode == 200;
-    }
+  static Future<bool> hapusStaff(int id) async {
+    final response = await http.delete(Uri.parse("${baseUrl}staff.php?id=$id"));
+    debugPrint("Hapus staff response: ${response.body}");
 
+    try {
+      final decoded = json.decode(response.body);
+      if (decoded is Map && decoded['success'] == true) {
+        return true;
+      }
+    } catch (_) {}
+    return response.statusCode == 200;
+  }
 
-
-
-// =======================================================
-// 🧾 TRANSAKSI
-// =======================================================
+  // =======================================================
+  // 🧾 TRANSAKSI
+  // =======================================================
   static Future<List<Transaksi>> getTransaksiList() async {
     final response = await http.get(Uri.parse("${baseUrl}transaksi.php"));
     if (response.statusCode == 200) {
@@ -205,11 +204,27 @@ class ApiService {
   }
 
   static Future<bool> tambahTransaksi(Transaksi trx) async {
-    final response = await http.post(
-      Uri.parse("${baseUrl}transaksi.php"),
-      body: trx.toJson(),
-    );
-    return response.statusCode == 200;
+    try {
+      final response = await http.post(
+        Uri.parse("${baseUrl}transaksi.php"),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode(trx.toJson()), // kirim data dalam bentuk JSON
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded['success'] == true) {
+          return true;
+        } else {
+          debugPrint("Gagal tambah transaksi: ${response.body}");
+        }
+      } else {
+        debugPrint("Error status tambah transaksi: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Error tambah transaksi: $e");
+    }
+    return false;
   }
 
   static Future<bool> updateTransaksi(Transaksi trx) async {
@@ -221,15 +236,21 @@ class ApiService {
   }
 
   static Future<bool> hapusTransaksi(int id) async {
-    final response = await http.delete(Uri.parse("${baseUrl}transaksi.php?id=$id"));
+    final response = await http.delete(
+      Uri.parse("${baseUrl}transaksi.php?id=$id"),
+    );
     return response.statusCode == 200;
   }
 
-// =======================================================
-// 🧾 DETAIL TRANSAKSI
-// =======================================================
-  static Future<List<DetailTransaksi>> getDetailTransaksiList(int idTransaksi) async {
-    final response = await http.get(Uri.parse("${baseUrl}detail_transaksi.php?id_transaksi=$idTransaksi"));
+  // =======================================================
+  // 🧾 DETAIL TRANSAKSI
+  // =======================================================
+  static Future<List<DetailTransaksi>> getDetailTransaksiList(
+    int idTransaksi,
+  ) async {
+    final response = await http.get(
+      Uri.parse("${baseUrl}detail_transaksi.php?id_transaksi=$idTransaksi"),
+    );
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
       return data.map((e) => DetailTransaksi.fromJson(e)).toList();
@@ -255,8 +276,9 @@ class ApiService {
   }
 
   static Future<bool> hapusDetailTransaksi(int id) async {
-    final response = await http.delete(Uri.parse("${baseUrl}detail_transaksi.php?id=$id"));
+    final response = await http.delete(
+      Uri.parse("${baseUrl}detail_transaksi.php?id=$id"),
+    );
     return response.statusCode == 200;
   }
-
 }

@@ -13,63 +13,85 @@ class TransaksiFormPage extends StatefulWidget {
 
 class _TransaksiFormPageState extends State<TransaksiFormPage> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _tanggalController;
-  late TextEditingController _jenisController;
-  late TextEditingController _namaPelangganController;
-  late TextEditingController _kontakPelangganController;
-  late TextEditingController _idStaffController;
-  late TextEditingController _idPemasokController;
+  final TextEditingController _tanggalCtrl = TextEditingController();
+  final TextEditingController _idStaffCtrl = TextEditingController();
+  String? _jenisTransaksi; // "masuk" atau "keluar"
+
+  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    _tanggalController =
-        TextEditingController(text: widget.transaksi?.tanggal ?? '');
-    _jenisController =
-        TextEditingController(text: widget.transaksi?.jenisTransaksi ?? '');
-    _namaPelangganController =
-        TextEditingController(text: widget.transaksi?.namaPelanggan ?? '');
-    _kontakPelangganController =
-        TextEditingController(text: widget.transaksi?.kontakPelanggan ?? '');
-    _idStaffController =
-        TextEditingController(text: widget.transaksi?.idStaff.toString() ?? '');
-    _idPemasokController = TextEditingController(
-        text: widget.transaksi?.idPemasok?.toString() ?? '');
+    if (widget.transaksi != null) {
+      _tanggalCtrl.text = widget.transaksi!.tanggal ?? '';
+      _idStaffCtrl.text = widget.transaksi!.idStaff.toString();
+      _jenisTransaksi = widget.transaksi!.jenisTransaksi;
+    }
   }
 
-  void _simpan() async {
-    if (_formKey.currentState!.validate()) {
-      final trx = Transaksi(
-        idTransaksi: widget.transaksi?.idTransaksi,
-        tanggal: _tanggalController.text,
-        jenisTransaksi: _jenisController.text,
-        namaPelanggan: _namaPelangganController.text,
-        kontakPelanggan: _kontakPelangganController.text,
-        idStaff: int.parse(_idStaffController.text),
-        idPemasok: _idPemasokController.text.isNotEmpty
-            ? int.tryParse(_idPemasokController.text)
-            : null,
+  @override
+  void dispose() {
+    _tanggalCtrl.dispose();
+    _idStaffCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _simpanTransaksi() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    final transaksi = Transaksi(
+      idTransaksi: widget.transaksi?.idTransaksi,
+      tanggal: _tanggalCtrl.text,
+      jenisTransaksi: _jenisTransaksi ?? '',
+      idStaff: int.parse(_idStaffCtrl.text),
+    );
+
+    bool sukses;
+    if (widget.transaksi == null) {
+      sukses = await ApiService.tambahTransaksi(transaksi);
+    } else {
+      sukses = await ApiService.updateTransaksi(transaksi);
+    }
+
+    setState(() => _loading = false);
+
+    if (!mounted) return;
+
+    if (sukses) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(widget.transaksi == null
+              ? 'Transaksi berhasil ditambahkan'
+              : 'Transaksi berhasil diperbarui'),
+        ),
       );
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan transaksi')),
+      );
+    }
+  }
 
-      bool success;
-      if (widget.transaksi == null) {
-        success = await ApiService.tambahTransaksi(trx);
-      } else {
-        success = await ApiService.updateTransaksi(trx);
-      }
-
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data transaksi disimpan')),
-        );
-        Navigator.pop(context);
-      }
+  Future<void> _pilihTanggal(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.tryParse(_tanggalCtrl.text) ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _tanggalCtrl.text = picked.toIso8601String().split('T').first;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.transaksi != null;
+    final bool isEdit = widget.transaksi != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -81,37 +103,75 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
           key: _formKey,
           child: ListView(
             children: [
+              // 📅 tanggal transaksi
               TextFormField(
-                controller: _tanggalController,
-                decoration: const InputDecoration(labelText: 'Tanggal (YYYY-MM-DD)'),
-                validator: (v) => v!.isEmpty ? 'Harap isi tanggal' : null,
+                controller: _tanggalCtrl,
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Tanggal Transaksi',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: () => _pilihTanggal(context),
+                  ),
+                ),
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Tanggal harus diisi' : null,
               ),
+              const SizedBox(height: 16),
+
+              // 🔄 jenis transaksi (masuk/keluar)
+              DropdownButtonFormField<String>(
+                value: _jenisTransaksi,
+                decoration: const InputDecoration(
+                  labelText: 'Jenis Transaksi',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'masuk',
+                    child: Text('Masuk (Barang Masuk)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'keluar',
+                    child: Text('Keluar (Barang Keluar)'),
+                  ),
+                ],
+                onChanged: (value) => setState(() => _jenisTransaksi = value),
+                validator: (val) =>
+                    val == null ? 'Pilih jenis transaksi' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // 👩‍⚕️ id staff
               TextFormField(
-                controller: _jenisController,
-                decoration: const InputDecoration(labelText: 'Jenis Transaksi'),
-                validator: (v) => v!.isEmpty ? 'Harap isi jenis transaksi' : null,
+                controller: _idStaffCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'ID Staff',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'ID Staff harus diisi' : null,
               ),
-              TextFormField(
-                controller: _namaPelangganController,
-                decoration: const InputDecoration(labelText: 'Nama Pelanggan'),
-              ),
-              TextFormField(
-                controller: _kontakPelangganController,
-                decoration: const InputDecoration(labelText: 'Kontak Pelanggan'),
-              ),
-              TextFormField(
-                controller: _idStaffController,
-                decoration: const InputDecoration(labelText: 'ID Staff'),
-                validator: (v) => v!.isEmpty ? 'Harap isi ID staff' : null,
-              ),
-              TextFormField(
-                controller: _idPemasokController,
-                decoration: const InputDecoration(labelText: 'ID Pemasok (opsional)'),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _simpan,
-                child: const Text('Simpan'),
+              const SizedBox(height: 24),
+
+              // 💾 tombol simpan
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: _loading
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(_loading ? 'Menyimpan...' : 'Simpan'),
+                  onPressed: _loading ? null : _simpanTransaksi,
+                ),
               ),
             ],
           ),

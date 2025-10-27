@@ -1,9 +1,9 @@
 class DetailTransaksi {
-  int? idDetail;
-  int idTransaksi;
-  int idBatch;
-  int jumlah;
-  double subtotal;
+  final int? idDetail;
+  final int idTransaksi; // ✅ penting
+  final int idBatch;
+  final int jumlah;
+  final double subtotal;
 
   DetailTransaksi({
     this.idDetail,
@@ -23,13 +23,13 @@ class DetailTransaksi {
     );
   }
 
-  Map<String, String> toJson() {
+  Map<String, dynamic> toJson() {
     return {
-      'id_detail': idDetail?.toString() ?? '',
-      'id_transaksi': idTransaksi.toString(),
-      'id_batch': idBatch.toString(),
-      'jumlah': jumlah.toString(),
-      'subtotal': subtotal.toString(),
+      'id_detail': idDetail,
+      'id_transaksi': idTransaksi,
+      'id_batch': idBatch,
+      'jumlah': jumlah,
+      'subtotal': subtotal,
     };
   }
 }
