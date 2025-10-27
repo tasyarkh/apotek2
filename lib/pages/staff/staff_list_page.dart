@@ -21,17 +21,20 @@ class _StaffListPageState extends State<StaffListPage> {
   }
 
   Future<void> _loadStaff() async {
-    try {
-      final data = await ApiService.getStaffList();
-      setState(() {
-        staffList = data;
-        isLoading = false;
-      });
-    } catch (e) {
-      debugPrint("Gagal memuat staff: $e");
-      setState(() => isLoading = false);
-    }
+  try {
+    final data = await ApiService.getStaffList();
+    if (!mounted) return; // ✅ Tambahkan ini
+    setState(() {
+      staffList = data;
+      isLoading = false;
+    });
+  } catch (e) {
+    if (!mounted) return; // ✅ Aman dari error ticker
+    debugPrint("Gagal memuat staff: $e");
+    setState(() => isLoading = false);
   }
+}
+
 
   void _hapusStaff(int id) async {
     final confirm = await showDialog(

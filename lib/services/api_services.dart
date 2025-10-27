@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
+import 'package:flutter/foundation.dart';
 import '../models/obat.dart';
 import '../models/batch_obat.dart';
 import '../models/pemasok.dart';
@@ -10,7 +10,7 @@ import '../models/detail_transaksi.dart';
 
 
 class ApiService {
-  static const String baseUrl = "http://10.0.2.2/apotek_apiver2/";
+   static const String baseUrl = "http://localhost/apotek_apiver2/";
 
   // =======================================================
   // 🧾 OBAT
@@ -117,36 +117,78 @@ class ApiService {
   // =======================================================
   // 🧾 STAFF
   // =======================================================
-  static Future<List<Staff>> getStaffList() async {
-    final response = await http.get(Uri.parse("${baseUrl}staff.php"));
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      return data.map((e) => Staff.fromJson(e)).toList();
-    } else {
-      throw Exception("Gagal memuat data staff");
+    static Future<List<Staff>> getStaffList() async {
+      final response = await http.get(Uri.parse("${baseUrl}staff.php"));
+
+      if (response.statusCode == 200) {
+        final body = response.body;
+        debugPrint("Response staff list: $body");
+
+        try {
+          final decoded = json.decode(body);
+
+          // kalau API mengembalikan {"data": [...]} maka ambil key "data"
+          final List data = decoded is List
+              ? decoded
+              : (decoded['data'] ?? []);
+
+          return data.map((e) => Staff.fromJson(e)).toList();
+        } catch (e) {
+          debugPrint("Parsing error staff: $e");
+          return [];
+        }
+      } else {
+        throw Exception("Gagal memuat data staff (${response.statusCode})");
+      }
     }
-  }
 
-  static Future<bool> tambahStaff(Staff staff) async {
-    final response = await http.post(
-      Uri.parse("${baseUrl}staff.php"),
-      body: staff.toJson(),
-    );
-    return response.statusCode == 200;
-  }
+    static Future<bool> tambahStaff(Staff staff) async {
+      final response = await http.post(
+        Uri.parse("${baseUrl}staff.php"),
+        body: staff.toJson(),
+      );
+      debugPrint("Tambah staff response: ${response.body}");
+      
+      // tambahkan pengecekan respons agar tidak TypeError
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded['success'] == true) {
+          return true;
+        }
+      } catch (_) {}
+      return response.statusCode == 200;
+    }
 
-  static Future<bool> updateStaff(Staff staff) async {
-    final response = await http.put(
-      Uri.parse("${baseUrl}staff.php?id=${staff.idStaff}"),
-      body: staff.toJson(),
-    );
-    return response.statusCode == 200;
-  }
+    static Future<bool> updateStaff(Staff staff) async {
+      final response = await http.put(
+        Uri.parse("${baseUrl}staff.php?id=${staff.idStaff}"),
+        body: staff.toJson(),
+      );
+      debugPrint("Update staff response: ${response.body}");
 
-  static Future<bool> hapusStaff(int id) async {
-    final response = await http.delete(Uri.parse("${baseUrl}staff.php?id=$id"));
-    return response.statusCode == 200;
-  }
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded['success'] == true) {
+          return true;
+        }
+      } catch (_) {}
+      return response.statusCode == 200;
+    }
+
+    static Future<bool> hapusStaff(int id) async {
+      final response = await http.delete(Uri.parse("${baseUrl}staff.php?id=$id"));
+      debugPrint("Hapus staff response: ${response.body}");
+
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map && decoded['success'] == true) {
+          return true;
+        }
+      } catch (_) {}
+      return response.statusCode == 200;
+    }
+
+
 
 
 // =======================================================

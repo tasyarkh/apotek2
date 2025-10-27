@@ -16,6 +16,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
   final _namaController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isSaving = false; // untuk mencegah double tap dan ticker error
 
   @override
   void initState() {
@@ -30,6 +31,8 @@ class _StaffFormPageState extends State<StaffFormPage> {
   Future<void> _simpanData() async {
     if (!_formKey.currentState!.validate()) return;
 
+    setState(() => _isSaving = true);
+
     final staff = Staff(
       idStaff: widget.staff?.idStaff,
       namaStaff: _namaController.text,
@@ -37,20 +40,40 @@ class _StaffFormPageState extends State<StaffFormPage> {
       password: _passwordController.text,
     );
 
-    bool success;
-    if (widget.staff == null) {
-      success = await ApiService.tambahStaff(staff);
-    } else {
-      success = await ApiService.updateStaff(staff);
+    bool success = false;
+    try {
+      if (widget.staff == null) {
+        success = await ApiService.tambahStaff(staff);
+      } else {
+        success = await ApiService.updateStaff(staff);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Terjadi kesalahan: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
 
-    if (success && mounted) {
+    if (!mounted) return; // mencegah akses context setelah dispose
+
+    if (success) {
       Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Gagal menyimpan data")),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _namaController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -70,26 +93,29 @@ class _StaffFormPageState extends State<StaffFormPage> {
               TextFormField(
                 controller: _namaController,
                 decoration: const InputDecoration(labelText: "Nama Staff"),
-                validator: (value) => value!.isEmpty ? "Nama wajib diisi" : null,
+                validator: (value) =>
+                    value == null || value.isEmpty ? "Nama wajib diisi" : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(labelText: "Username"),
-                validator: (value) => value!.isEmpty ? "Username wajib diisi" : null,
+                validator: (value) =>
+                    value == null || value.isEmpty ? "Username wajib diisi" : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: "Password"),
-                validator: (value) => value!.isEmpty ? "Password wajib diisi" : null,
+                validator: (value) =>
+                    value == null || value.isEmpty ? "Password wajib diisi" : null,
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: _simpanData,
+                onPressed: _isSaving ? null : _simpanData,
                 icon: const Icon(Icons.save),
-                label: const Text("Simpan"),
+                label: Text(_isSaving ? "Menyimpan..." : "Simpan"),
               ),
             ],
           ),

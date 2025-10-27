@@ -13,10 +13,10 @@ class Staff {
 
   factory Staff.fromJson(Map<String, dynamic> json) {
     return Staff(
-      idStaff: int.tryParse(json['id_staff'].toString()),
-      namaStaff: json['nama_staff'],
-      username: json['username'],
-      password: json['password'],
+      idStaff: int.tryParse(json['id_staff']?.toString() ?? '0'),
+      namaStaff: json['nama_staff']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      password: json['password']?.toString() ?? '',
     );
   }
 
