@@ -5,6 +5,7 @@ class Obat {
   final String? kandungan;
   final String? satuan;
   final String? kategori;
+  final int stok; // 🔹 Tambahan baru
 
   Obat({
     this.idObat,
@@ -13,6 +14,7 @@ class Obat {
     this.kandungan,
     this.satuan,
     this.kategori,
+    this.stok = 0, // 🔹 Default 0 agar aman kalau null
   });
 
   factory Obat.fromJson(Map<String, dynamic> json) {
@@ -23,17 +25,19 @@ class Obat {
       kandungan: json['kandungan']?.toString(),
       satuan: json['satuan']?.toString(),
       kategori: json['kategori']?.toString(),
+      stok: int.tryParse(json['stok']?.toString() ?? '0') ?? 0, // ✅ aman dari null
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, String> toJson() {
     return {
-      'id_obat': idObat,
+      'id_obat': idObat?.toString() ?? '',
       'nama_obat': namaObat,
       'bentuk': bentuk,
       'kandungan': kandungan ?? '',
       'satuan': satuan ?? '',
       'kategori': kategori ?? '',
+      'stok': stok.toString(), // 🔹 kirim juga ke backend (boleh diabaikan di PHP)
     };
   }
 }

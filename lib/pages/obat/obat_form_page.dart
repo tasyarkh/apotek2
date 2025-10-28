@@ -15,6 +15,7 @@ class _ObatFormPageState extends State<ObatFormPage> {
 
   final _namaController = TextEditingController();
   final _kandunganController = TextEditingController();
+  final _stokController = TextEditingController(); // 🔹 Tambahan
 
   // Dropdown selections
   String? _selectedBentuk;
@@ -35,6 +36,9 @@ class _ObatFormPageState extends State<ObatFormPage> {
       _selectedBentuk = widget.obat!.bentuk;
       _selectedSatuan = widget.obat!.satuan ?? _satuanList.first;
       _selectedKategori = widget.obat!.kategori ?? _kategoriList.first;
+      _stokController.text = widget.obat!.stok.toString(); // 🔹 tampilkan stok dari DB
+    } else {
+      _stokController.text = "0";
     }
   }
 
@@ -48,6 +52,7 @@ class _ObatFormPageState extends State<ObatFormPage> {
       kandungan: _kandunganController.text,
       satuan: _selectedSatuan ?? '',
       kategori: _selectedKategori ?? '',
+      stok: int.tryParse(_stokController.text) ?? 0, // 🔹 disertakan biar model tetap konsisten
     );
 
     try {
@@ -100,7 +105,7 @@ class _ObatFormPageState extends State<ObatFormPage> {
                 validator: (v) => v!.isEmpty ? "Wajib diisi" : null,
               ),
 
-              // BENTUK DROPDOWN
+              // BENTUK
               DropdownButtonFormField<String>(
                 value: _selectedBentuk,
                 decoration: const InputDecoration(labelText: "Bentuk Obat"),
@@ -117,7 +122,7 @@ class _ObatFormPageState extends State<ObatFormPage> {
                 decoration: const InputDecoration(labelText: "Kandungan / Komposisi"),
               ),
 
-              // SATUAN DROPDOWN
+              // SATUAN
               DropdownButtonFormField<String>(
                 value: _selectedSatuan,
                 decoration: const InputDecoration(labelText: "Satuan"),
@@ -128,7 +133,7 @@ class _ObatFormPageState extends State<ObatFormPage> {
                 validator: (v) => v == null || v.isEmpty ? "Pilih satuan" : null,
               ),
 
-              // KATEGORI DROPDOWN
+              // KATEGORI
               DropdownButtonFormField<String>(
                 value: _selectedKategori,
                 decoration: const InputDecoration(labelText: "Kategori"),
@@ -139,8 +144,20 @@ class _ObatFormPageState extends State<ObatFormPage> {
                 validator: (v) => v == null || v.isEmpty ? "Pilih kategori" : null,
               ),
 
+              // 🔹 STOK (read-only)
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _stokController,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: "Stok (otomatis dari batch)",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
               const SizedBox(height: 20),
 
+              // Tombol Simpan
               ElevatedButton.icon(
                 onPressed: _simpan,
                 icon: const Icon(Icons.save, color: Colors.white),

@@ -13,6 +13,7 @@ class ApotekApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Apotek Rakyat Mandiri',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: const Color(0xFF5F8D4E),
         colorScheme: ColorScheme.fromSeed(

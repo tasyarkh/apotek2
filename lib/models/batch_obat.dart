@@ -1,17 +1,20 @@
 class Batch {
   final int? idBatch;
   final int idObat;
+  final int? idPemasok; // boleh null
   final String noBatch;
   final String tglKedaluwarsa;
   final double hargaBeli;
   final double hargaJual;
   final int stokAwal;
   final int stokTersedia;
-  final String? namaObat; // relasi dengan tabel obat
+  final String? namaObat;
+  final String? namaPemasok;
 
   Batch({
     this.idBatch,
     required this.idObat,
+    this.idPemasok,
     required this.noBatch,
     required this.tglKedaluwarsa,
     required this.hargaBeli,
@@ -19,32 +22,42 @@ class Batch {
     required this.stokAwal,
     required this.stokTersedia,
     this.namaObat,
+    this.namaPemasok,
   });
 
   factory Batch.fromJson(Map<String, dynamic> json) {
     return Batch(
-      idBatch: int.tryParse(json['id_batch'].toString()),
-      idObat: int.parse(json['id_obat'].toString()),
-      noBatch: json['no_batch'],
-      tglKedaluwarsa: json['tgl_kedaluwarsa'],
-      hargaBeli: double.parse(json['harga_beli'].toString()),
-      hargaJual: double.parse(json['harga_jual'].toString()),
-      stokAwal: int.parse(json['stok_awal'].toString()),
-      stokTersedia: int.parse(json['stok_tersedia'].toString()),
-      namaObat: json['nama_obat'],
+      idBatch: json['id_batch'] != null
+          ? int.tryParse(json['id_batch'].toString())
+          : null,
+      idObat: int.tryParse(json['id_obat'].toString()) ?? 0,
+      idPemasok: (json['id_pemasok'] == null ||
+              json['id_pemasok'].toString().isEmpty)
+          ? null
+          : int.tryParse(json['id_pemasok'].toString()),
+      noBatch: json['no_batch']?.toString() ?? '',
+      tglKedaluwarsa: json['tgl_kedaluwarsa']?.toString() ?? '',
+      hargaBeli: double.tryParse(json['harga_beli']?.toString() ?? '0') ?? 0.0,
+      hargaJual: double.tryParse(json['harga_jual']?.toString() ?? '0') ?? 0.0,
+      stokAwal: int.tryParse(json['stok_awal']?.toString() ?? '0') ?? 0,
+      stokTersedia: int.tryParse(json['stok_tersedia']?.toString() ?? '0') ?? 0,
+      namaObat: json['nama_obat']?.toString(),
+      namaPemasok: json['nama_pemasok']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id_batch': idBatch,
-      'id_obat': idObat,
+      if (idBatch != null) 'id_batch': idBatch.toString(),
+      'id_obat': idObat.toString(),
+      // kirim NULL jika tidak ada pemasok
+      'id_pemasok': idPemasok == null ? null : idPemasok.toString(),
       'no_batch': noBatch,
       'tgl_kedaluwarsa': tglKedaluwarsa,
-      'harga_beli': hargaBeli,
-      'harga_jual': hargaJual,
-      'stok_awal': stokAwal,
-      'stok_tersedia': stokTersedia,
+      'harga_beli': hargaBeli.toString(),
+      'harga_jual': hargaJual.toString(),
+      'stok_awal': stokAwal.toString(),
+      'stok_tersedia': stokTersedia.toString(),
     };
   }
 }

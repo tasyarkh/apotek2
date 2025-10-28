@@ -15,72 +15,134 @@ class ApiService {
   // 🧾 OBAT
   // =======================================================
   static Future<List<Obat>> getObatList() async {
-    final response = await http.get(Uri.parse("${baseUrl}obat.php"));
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      return data.map((e) => Obat.fromJson(e)).toList();
-    } else {
-      throw Exception("Gagal memuat data obat");
+      try {
+        final response = await http.get(Uri.parse("${baseUrl}obat.php"));
+        debugPrint("GET ${baseUrl}obat.php -> ${response.statusCode}");
+        if (response.statusCode == 200) {
+          final List data = json.decode(response.body);
+          return data.map((e) => Obat.fromJson(e)).toList();
+        } else {
+          throw Exception("Gagal memuat data obat");
+        }
+      } catch (e) {
+        debugPrint("Error getObatList: $e");
+        rethrow;
+      }
     }
-  }
+
 
   static Future<bool> tambahObat(Obat obat) async {
-    final response = await http.post(
-      Uri.parse("${baseUrl}obat.php"),
-      body: obat.toJson(),
-    );
+  final response = await http.post(
+    Uri.parse("${baseUrl}obat.php"),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode(obat.toJson()),
+  );
+    debugPrint("Response tambah obat: ${response.body}");
     return response.statusCode == 200;
   }
 
   static Future<bool> updateObat(Obat obat) async {
     final response = await http.put(
       Uri.parse("${baseUrl}obat.php?id=${obat.idObat}"),
-      body: obat.toJson(),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(obat.toJson()),
     );
+    debugPrint("Response update obat: ${response.body}");
     return response.statusCode == 200;
   }
+
 
   static Future<bool> hapusObat(int id) async {
     final response = await http.delete(Uri.parse("${baseUrl}obat.php?id=$id"));
     return response.statusCode == 200;
   }
 
-  // =======================================================
-  // 🧾 BATCH OBAT
+    // =======================================================
+  // 🧾 BATCH OBAT (FIXED)
   // =======================================================
 
   static Future<List<Batch>> getBatchList() async {
-    final response = await http.get(Uri.parse("${baseUrl}batch_obat.php"));
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      return data.map((e) => Batch.fromJson(e)).toList();
-    } else {
-      throw Exception("Gagal memuat data batch");
+    try {
+      final response = await http.get(Uri.parse("${baseUrl}batch_obat.php"));
+      debugPrint("GET batch_obat -> ${response.statusCode}");
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        return data.map((e) => Batch.fromJson(e)).toList();
+      } else {
+        debugPrint("Gagal load batch: ${response.body}");
+        throw Exception("Gagal memuat data batch (${response.statusCode})");
+      }
+    } catch (e) {
+      debugPrint("Error getBatchList: $e");
+      rethrow;
     }
   }
 
   static Future<bool> tambahBatch(Batch batch) async {
-    final response = await http.post(
-      Uri.parse("${baseUrl}batch_obat.php"),
-      body: batch.toJson(),
-    );
-    return response.statusCode == 200;
+    try {
+      // kirim sebagai JSON biar null bisa terbaca benar oleh PHP
+      final response = await http.post(
+        Uri.parse("${baseUrl}batch_obat.php"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(batch.toJson()),
+      );
+
+      debugPrint("Response tambahBatch (${response.statusCode}): ${response.body}");
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['success'] == true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      debugPrint("Error tambahBatch: $e");
+      return false;
+    }
   }
 
   static Future<bool> updateBatch(Batch batch) async {
-    final response = await http.put(
-      Uri.parse("${baseUrl}batch_obat.php?id=${batch.idBatch}"),
-      body: batch.toJson(),
-    );
-    return response.statusCode == 200;
+    try {
+      final response = await http.put(
+        Uri.parse("${baseUrl}batch_obat.php?id=${batch.idBatch}"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(batch.toJson()),
+      );
+
+      debugPrint("Response updateBatch (${response.statusCode}): ${response.body}");
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['success'] == true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      debugPrint("Error updateBatch: $e");
+      return false;
+    }
   }
 
   static Future<bool> hapusBatch(int id) async {
-    final response = await http.delete(
-      Uri.parse("${baseUrl}batch_obat.php?id=$id"),
-    );
-    return response.statusCode == 200;
+    try {
+      final response = await http.delete(
+        Uri.parse("${baseUrl}batch_obat.php?id=$id"),
+      );
+
+      debugPrint("Response hapusBatch (${response.statusCode}): ${response.body}");
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Error hapusBatch: $e");
+      return false;
+    }
   }
+
+
 
   // =======================================================
   // 🧾 PEMASOK

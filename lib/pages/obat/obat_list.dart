@@ -23,7 +23,7 @@ class _ObatListPageState extends State<ObatListPage> {
     _obatList = ApiService.getObatList();
   }
 
-  void _hapusObat(int id) async {
+  Future<void> _hapusObat(int id) async {
     bool confirm = await showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -36,9 +36,7 @@ class _ObatListPageState extends State<ObatListPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text("Hapus", style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -48,6 +46,9 @@ class _ObatListPageState extends State<ObatListPage> {
     if (confirm) {
       await ApiService.hapusObat(id);
       setState(() => _loadData());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Data berhasil dihapus")),
+      );
     }
   }
 
@@ -74,40 +75,65 @@ class _ObatListPageState extends State<ObatListPage> {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text("Error: ${snapshot.error}"));
-          } else if (snapshot.data!.isEmpty) {
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text("Belum ada data obat."));
           }
 
           final data = snapshot.data!;
-          return ListView.builder(
-            itemCount: data.length,
-            itemBuilder: (context, index) {
-              final o = data[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 2,
-                child: ListTile(
-                  title: Text(o.namaObat),
-                  subtitle: Text(
-                    "Bentuk: ${o.bentuk}\nKategori: ${o.kategori}",
-                    style: const TextStyle(fontSize: 13),
+          return RefreshIndicator(
+            onRefresh: () async => setState(() => _loadData()),
+            child: ListView.builder(
+              itemCount: data.length,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemBuilder: (context, index) {
+                final o = data[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'edit') _goToForm(obat: o);
-                      if (value == 'hapus') _hapusObat(o.idObat!);
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(value: 'hapus', child: Text('Hapus')),
-                    ],
+                  elevation: 3,
+                  child: ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    title: Text(
+                      o.namaObat,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Bentuk: ${o.bentuk}", style: const TextStyle(fontSize: 13)),
+                        Text("Kategori: ${o.kategori ?? '-'}",
+                            style: const TextStyle(fontSize: 13)),
+                        Text(
+                          "Stok: ${o.stok}", // 🔹 tampilkan stok dari DB
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: o.stok > 0 ? Colors.black87 : Colors.redAccent,
+                            fontWeight:
+                                o.stok > 0 ? FontWeight.normal : FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit') _goToForm(obat: o);
+                        if (value == 'hapus') _hapusObat(o.idObat!);
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        const PopupMenuItem(value: 'hapus', child: Text('Hapus')),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),

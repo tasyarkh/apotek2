@@ -22,8 +22,9 @@ class _PemasokFormPageState extends State<PemasokFormPage> {
     super.initState();
     if (widget.pemasok != null) {
       _namaController.text = widget.pemasok!.namaPemasok;
-      _alamatController.text = widget.pemasok!.alamat;
-      _kontakController.text = widget.pemasok!.kontak;
+      _alamatController.text = widget.pemasok!.alamat ?? '';
+      _kontakController.text = widget.pemasok!.kontak ?? '';
+
     }
   }
 
