@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../models/staff.dart';
+import '../../models/batch_obat.dart';
 import '../../models/transaksi.dart';
 import '../../services/api_services.dart';
 
 class TransaksiFormPage extends StatefulWidget {
   final Transaksi? transaksi;
-
   const TransaksiFormPage({super.key, this.transaksi});
 
   @override
@@ -13,89 +14,103 @@ class TransaksiFormPage extends StatefulWidget {
 
 class _TransaksiFormPageState extends State<TransaksiFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _tanggalCtrl = TextEditingController();
-  final TextEditingController _idStaffCtrl = TextEditingController();
-  String? _jenisTransaksi; // "masuk" atau "keluar"
+  final _keteranganController = TextEditingController();
+  final _jumlahController = TextEditingController();
 
-  bool _loading = false;
+  List<Staff> _staffList = [];
+  List<Batch> _batchList = [];
+
+  int? _selectedStaffId;
+  int? _selectedBatchId;
+  double? _hargaJual;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
+    _loadData();
+
     if (widget.transaksi != null) {
-      _tanggalCtrl.text = widget.transaksi!.tanggal ?? '';
-      _idStaffCtrl.text = widget.transaksi!.idStaff.toString();
-      _jenisTransaksi = widget.transaksi!.jenisTransaksi;
+      _keteranganController.text = widget.transaksi!.keterangan ?? '';
+      _selectedStaffId = widget.transaksi!.idStaff;
     }
   }
 
-  @override
-  void dispose() {
-    _tanggalCtrl.dispose();
-    _idStaffCtrl.dispose();
-    super.dispose();
+  Future<void> _loadData() async {
+    final staff = await ApiService.getStaffList();
+    final batch = await ApiService.getBatchList();
+    if (mounted) {
+      setState(() {
+        _staffList = staff;
+        _batchList = batch;
+      });
+    }
   }
 
   Future<void> _simpanTransaksi() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
-    setState(() => _loading = true);
-
-    final transaksi = Transaksi(
-      idTransaksi: widget.transaksi?.idTransaksi,
-      tanggal: _tanggalCtrl.text,
-      jenisTransaksi: _jenisTransaksi ?? '',
-      idStaff: int.parse(_idStaffCtrl.text),
-    );
-
-    bool sukses;
-    if (widget.transaksi == null) {
-      sukses = await ApiService.tambahTransaksi(transaksi);
-    } else {
-      sukses = await ApiService.updateTransaksi(transaksi);
+    if (_selectedStaffId == null || _selectedBatchId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pilih staff dan obat terlebih dahulu")),
+      );
+      return;
     }
 
-    setState(() => _loading = false);
+    setState(() => _isSaving = true);
 
-    if (!mounted) return;
+    try {
+      // 🧾 1. Tambah transaksi utama dulu
+      final response = await ApiService.tambahTransaksiSimple(
+        idStaff: _selectedStaffId!,
+        keterangan: _keteranganController.text,
+      );
 
-    if (sukses) {
+      if (response == null || response['success'] != true) {
+        throw Exception("Gagal membuat transaksi utama");
+      }
+
+      final idTransaksi = response['id_transaksi'];
+      if (idTransaksi == null) {
+        throw Exception("ID transaksi tidak diterima dari server");
+      }
+
+      // 📦 2. Tambah detail transaksi (barang keluar)
+      final jumlah = int.parse(_jumlahController.text);
+      final harga = _hargaJual ?? 0;
+      final subtotal = jumlah * harga;
+
+      final detailSuccess = await ApiService.tambahDetailBarangKeluar(
+        idTransaksi: idTransaksi,
+        idBatch: _selectedBatchId!,
+        jumlah: jumlah,
+        subtotal: subtotal,
+      );
+
+      if (!detailSuccess) throw Exception("Gagal menambah detail transaksi");
+
+      // 🎉 Berhasil
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.transaksi == null
-              ? 'Transaksi berhasil ditambahkan'
-              : 'Transaksi berhasil diperbarui'),
-        ),
+        const SnackBar(content: Text("✅ Barang keluar berhasil dicatat")),
       );
       Navigator.pop(context, true);
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan transaksi')),
+        SnackBar(content: Text("❌ Gagal menyimpan: $e")),
       );
-    }
-  }
-
-  Future<void> _pilihTanggal(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.tryParse(_tanggalCtrl.text) ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      setState(() {
-        _tanggalCtrl.text = picked.toIso8601String().split('T').first;
-      });
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isEdit = widget.transaksi != null;
+    final isEdit = widget.transaksi != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Transaksi' : 'Tambah Transaksi'),
+        title: Text(isEdit ? "Edit Transaksi" : "Transaksi Barang Keluar"),
+        backgroundColor: const Color(0xFF5F8D4E),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -103,74 +118,83 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
           key: _formKey,
           child: ListView(
             children: [
-              // 📅 tanggal transaksi
-              TextFormField(
-                controller: _tanggalCtrl,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Tanggal Transaksi',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: () => _pilihTanggal(context),
-                  ),
-                ),
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Tanggal harus diisi' : null,
-              ),
-              const SizedBox(height: 16),
-
-              // 🔄 jenis transaksi (masuk/keluar)
-              DropdownButtonFormField<String>(
-                value: _jenisTransaksi,
+              // 🧍 STAFF
+              DropdownButtonFormField<int>(
+                value: _selectedStaffId,
                 decoration: const InputDecoration(
-                  labelText: 'Jenis Transaksi',
+                  labelText: "Pilih Staff",
                   border: OutlineInputBorder(),
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'masuk',
-                    child: Text('Masuk (Barang Masuk)'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'keluar',
-                    child: Text('Keluar (Barang Keluar)'),
-                  ),
-                ],
-                onChanged: (value) => setState(() => _jenisTransaksi = value),
-                validator: (val) =>
-                    val == null ? 'Pilih jenis transaksi' : null,
+                items: _staffList
+                    .map((s) => DropdownMenuItem(
+                          value: s.idStaff,
+                          child: Text(s.namaStaff),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedStaffId = v),
+                validator: (v) =>
+                    v == null ? "Pilih staff terlebih dahulu" : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // 👩‍⚕️ id staff
-              TextFormField(
-                controller: _idStaffCtrl,
+              // 💊 OBAT / BATCH
+              DropdownButtonFormField<int>(
+                value: _selectedBatchId,
                 decoration: const InputDecoration(
-                  labelText: 'ID Staff',
+                  labelText: "Pilih Batch Obat",
                   border: OutlineInputBorder(),
                 ),
+                items: _batchList
+                    .map((b) => DropdownMenuItem(
+                          value: b.idBatch,
+                          child: Text("${b.namaObat ?? ''} (${b.noBatch})"),
+                        ))
+                    .toList(),
+                onChanged: (v) {
+                  final selected =
+                      _batchList.firstWhere((b) => b.idBatch == v);
+                  setState(() {
+                    _selectedBatchId = v;
+                    _hargaJual = selected.hargaJual;
+                  });
+                },
+                validator: (v) =>
+                    v == null ? "Pilih batch obat terlebih dahulu" : null,
+              ),
+              const SizedBox(height: 12),
+
+              // 🔢 JUMLAH KELUAR
+              TextFormField(
+                controller: _jumlahController,
                 keyboardType: TextInputType.number,
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'ID Staff harus diisi' : null,
+                decoration: const InputDecoration(
+                  labelText: "Jumlah Keluar",
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v!.isEmpty ? "Masukkan jumlah keluar" : null,
+              ),
+              const SizedBox(height: 12),
+
+              // 📝 KETERANGAN
+              TextFormField(
+                controller: _keteranganController,
+                decoration: const InputDecoration(
+                  labelText: "Keterangan (opsional)",
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 24),
 
-              // 💾 tombol simpan
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: _loading
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(_loading ? 'Menyimpan...' : 'Simpan'),
-                  onPressed: _loading ? null : _simpanTransaksi,
+              // 💾 SIMPAN
+              ElevatedButton.icon(
+                onPressed: _isSaving ? null : _simpanTransaksi,
+                icon: const Icon(Icons.save),
+                label: Text(isEdit ? "Update" : "Simpan Transaksi"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      _isSaving ? Colors.grey : const Color(0xFFE84C3D),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
             ],

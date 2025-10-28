@@ -6,7 +6,6 @@ import '../models/batch_obat.dart';
 import '../models/pemasok.dart';
 import '../models/staff.dart';
 import '../models/transaksi.dart';
-import '../models/detail_transaksi.dart';
 
 class ApiService {
   static const String baseUrl = "http://localhost/apotek_apiver2/";
@@ -15,28 +14,27 @@ class ApiService {
   // 🧾 OBAT
   // =======================================================
   static Future<List<Obat>> getObatList() async {
-      try {
-        final response = await http.get(Uri.parse("${baseUrl}obat.php"));
-        debugPrint("GET ${baseUrl}obat.php -> ${response.statusCode}");
-        if (response.statusCode == 200) {
-          final List data = json.decode(response.body);
-          return data.map((e) => Obat.fromJson(e)).toList();
-        } else {
-          throw Exception("Gagal memuat data obat");
-        }
-      } catch (e) {
-        debugPrint("Error getObatList: $e");
-        rethrow;
+    try {
+      final response = await http.get(Uri.parse("${baseUrl}obat.php"));
+      debugPrint("GET ${baseUrl}obat.php -> ${response.statusCode}");
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        return data.map((e) => Obat.fromJson(e)).toList();
+      } else {
+        throw Exception("Gagal memuat data obat");
       }
+    } catch (e) {
+      debugPrint("Error getObatList: $e");
+      rethrow;
     }
-
+  }
 
   static Future<bool> tambahObat(Obat obat) async {
-  final response = await http.post(
-    Uri.parse("${baseUrl}obat.php"),
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode(obat.toJson()),
-  );
+    final response = await http.post(
+      Uri.parse("${baseUrl}obat.php"),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(obat.toJson()),
+    );
     debugPrint("Response tambah obat: ${response.body}");
     return response.statusCode == 200;
   }
@@ -51,16 +49,14 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-
   static Future<bool> hapusObat(int id) async {
     final response = await http.delete(Uri.parse("${baseUrl}obat.php?id=$id"));
     return response.statusCode == 200;
   }
 
-    // =======================================================
-  // 🧾 BATCH OBAT (FIXED)
   // =======================================================
-
+  // 🧾 BATCH OBAT
+  // =======================================================
   static Future<List<Batch>> getBatchList() async {
     try {
       final response = await http.get(Uri.parse("${baseUrl}batch_obat.php"));
@@ -141,8 +137,6 @@ class ApiService {
       return false;
     }
   }
-
-
 
   // =======================================================
   // 🧾 PEMASOK
@@ -253,94 +247,113 @@ class ApiService {
   }
 
   // =======================================================
-  // 🧾 TRANSAKSI
+  // 🧾 TRANSAKSI BARANG KELUAR
   // =======================================================
+
+  // ✅ ambil list transaksi
   static Future<List<Transaksi>> getTransaksiList() async {
-    final response = await http.get(Uri.parse("${baseUrl}transaksi.php"));
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      return data.map((e) => Transaksi.fromJson(e)).toList();
-    } else {
-      throw Exception("Gagal memuat data transaksi");
+    try {
+      final response = await http.get(Uri.parse("${baseUrl}transaksi.php"));
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        return data.map((e) => Transaksi.fromJson(e)).toList();
+      } else {
+        throw Exception("Gagal memuat transaksi");
+      }
+    } catch (e) {
+      debugPrint("Error getTransaksiList: $e");
+      return [];
     }
   }
 
+  // ✅ tambah transaksi utama
+  static Future<Map<String, dynamic>?> tambahTransaksiSimple({
+    required int idStaff,
+    String? keterangan,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${baseUrl}transaksi.php"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'tgl_transaksi': DateTime.now().toIso8601String().split('T')[0],
+          'id_staff': idStaff,
+          'keterangan': keterangan ?? '',
+        }),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint("Error tambahTransaksiSimple: $e");
+    }
+    return null;
+  }
+
+  // ✅ tambah detail transaksi keluar
+  static Future<bool> tambahDetailBarangKeluar({
+    required int idTransaksi,
+    required int idBatch,
+    required int jumlah,
+    required double subtotal,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${baseUrl}detail_transaksi.php"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id_transaksi': idTransaksi,
+          'id_batch': idBatch,
+          'jumlah': jumlah,
+          'subtotal': subtotal,
+        }),
+      );
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['success'] == true;
+      }
+    } catch (e) {
+      debugPrint("Error tambahDetailBarangKeluar: $e");
+    }
+    return false;
+  }
+
+  // ✅ hapus transaksi
+  static Future<bool> hapusTransaksi(int id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse("${baseUrl}transaksi.php?id=$id"),
+      );
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Error hapusTransaksi: $e");
+      return false;
+    }
+  }
+
+  // ✅ tambah transaksi manual
   static Future<bool> tambahTransaksi(Transaksi trx) async {
     try {
       final response = await http.post(
         Uri.parse("${baseUrl}transaksi.php"),
         headers: {"Content-Type": "application/json"},
-        body: json.encode(trx.toJson()), // kirim data dalam bentuk JSON
+        body: json.encode(trx.toJson()),
       );
+
+      debugPrint("Tambah transaksi response: ${response.body}");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        if (decoded is Map && decoded['success'] == true) {
-          return true;
-        } else {
-          debugPrint("Gagal tambah transaksi: ${response.body}");
-        }
-      } else {
-        debugPrint("Error status tambah transaksi: ${response.statusCode}");
+        return decoded['success'] == true;
       }
+      return false;
     } catch (e) {
-      debugPrint("Error tambah transaksi: $e");
+      debugPrint("Error tambahTransaksi: $e");
+      return false;
     }
-    return false;
-  }
-
-  static Future<bool> updateTransaksi(Transaksi trx) async {
-    final response = await http.put(
-      Uri.parse("${baseUrl}transaksi.php?id=${trx.idTransaksi}"),
-      body: trx.toJson(),
-    );
-    return response.statusCode == 200;
-  }
-
-  static Future<bool> hapusTransaksi(int id) async {
-    final response = await http.delete(
-      Uri.parse("${baseUrl}transaksi.php?id=$id"),
-    );
-    return response.statusCode == 200;
-  }
-
-  // =======================================================
-  // 🧾 DETAIL TRANSAKSI
-  // =======================================================
-  static Future<List<DetailTransaksi>> getDetailTransaksiList(
-    int idTransaksi,
-  ) async {
-    final response = await http.get(
-      Uri.parse("${baseUrl}detail_transaksi.php?id_transaksi=$idTransaksi"),
-    );
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      return data.map((e) => DetailTransaksi.fromJson(e)).toList();
-    } else {
-      throw Exception("Gagal memuat detail transaksi");
-    }
-  }
-
-  static Future<bool> tambahDetailTransaksi(DetailTransaksi detail) async {
-    final response = await http.post(
-      Uri.parse("${baseUrl}detail_transaksi.php"),
-      body: detail.toJson(),
-    );
-    return response.statusCode == 200;
-  }
-
-  static Future<bool> updateDetailTransaksi(DetailTransaksi detail) async {
-    final response = await http.put(
-      Uri.parse("${baseUrl}detail_transaksi.php?id=${detail.idDetail}"),
-      body: detail.toJson(),
-    );
-    return response.statusCode == 200;
-  }
-
-  static Future<bool> hapusDetailTransaksi(int id) async {
-    final response = await http.delete(
-      Uri.parse("${baseUrl}detail_transaksi.php?id=$id"),
-    );
-    return response.statusCode == 200;
   }
 }
