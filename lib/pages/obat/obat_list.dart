@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/obat.dart';
 import '../../services/api_services.dart';
+import '../../utils/pdf_helper.dart'; // ✅ tambahkan import ini
 import 'obat_form_page.dart';
 
 class ObatListPage extends StatefulWidget {
@@ -60,6 +61,32 @@ class _ObatListPageState extends State<ObatListPage> {
     if (result == true) setState(() => _loadData());
   }
 
+  // ✅ Fungsi cetak PDF
+  Future<void> _cetakPDF() async {
+    try {
+      final data = await ApiService.getObatList();
+      if (data.isEmpty) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text("Tidak ada data untuk dicetak.")));
+        return;
+      }
+
+      await PDFHelper.printTable(
+        title: "Laporan Data Obat",
+        headers: ["Nama Obat", "Bentuk", "Kategori", "Stok"],
+        data: data.map((o) => [
+          o.namaObat,
+          o.bentuk,
+          o.kategori ?? "-",
+          (o.stok ?? 0).toString(),
+        ]).toList(),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Gagal mencetak: $e")));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,6 +94,15 @@ class _ObatListPageState extends State<ObatListPage> {
         title: const Text("Data Obat"),
         backgroundColor: const Color(0xFF5F8D4E),
         centerTitle: true,
+
+        // ✅ Tambahkan tombol Print di kanan atas
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.print, color: Colors.white),
+            tooltip: "Cetak Data Obat",
+            onPressed: _cetakPDF,
+          ),
+        ],
       ),
       body: FutureBuilder<List<Obat>>(
         future: _obatList,
@@ -106,16 +142,20 @@ class _ObatListPageState extends State<ObatListPage> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Bentuk: ${o.bentuk}", style: const TextStyle(fontSize: 13)),
+                        Text("Bentuk: ${o.bentuk}",
+                            style: const TextStyle(fontSize: 13)),
                         Text("Kategori: ${o.kategori ?? '-'}",
                             style: const TextStyle(fontSize: 13)),
                         Text(
-                          "Stok: ${o.stok}", // 🔹 tampilkan stok dari DB
+                          "Stok: ${o.stok ?? 0}",
                           style: TextStyle(
                             fontSize: 13,
-                            color: (o.stok ?? 0) > 0 ? Colors.black87 : Colors.redAccent,
-                            fontWeight: (o.stok ?? 0) > 0 ? FontWeight.normal : FontWeight.bold,
-
+                            color: (o.stok ?? 0) > 0
+                                ? Colors.black87
+                                : Colors.redAccent,
+                            fontWeight: (o.stok ?? 0) > 0
+                                ? FontWeight.normal
+                                : FontWeight.bold,
                           ),
                         ),
                       ],

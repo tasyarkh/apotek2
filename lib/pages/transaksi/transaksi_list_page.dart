@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/transaksi.dart';
-import 'transaksi_form_page.dart'; // nanti form tambah transaksi
+import 'transaksi_form_page.dart';
 import '../../services/api_services.dart';
 import '../../widget/loading_indicator.dart';
+import '../../utils/pdf_helper.dart';
 
 class TransaksiListPage extends StatefulWidget {
   const TransaksiListPage({Key? key}) : super(key: key);
@@ -28,10 +29,51 @@ class _TransaksiListPageState extends State<TransaksiListPage> {
     setState(() => _loadData());
   }
 
+  Future<void> _printPDF(List<Transaksi> data) async {
+    try {
+      await PDFHelper.printTable(
+        title: "Laporan Transaksi Barang Keluar",
+        headers: ["ID", "Tanggal", "Staff", "Keterangan"],
+        data:
+            data
+                .map(
+                  (t) => [
+                    (t.idTransaksi ?? '').toString(),
+                    t.tglTransaksi ?? '',
+                    t.namaStaff ?? '',
+                    t.keterangan ?? '',
+                  ],
+                )
+                .toList(),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Gagal membuat PDF: $e")));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Transaksi Barang Keluar")),
+      appBar: AppBar(
+        title: const Text("Transaksi Barang Keluar"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            onPressed: () async {
+              final data = await _transaksiList;
+              if (mounted && data.isNotEmpty) {
+                _printPDF(data);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Tidak ada data untuk dicetak")),
+                );
+              }
+            },
+          ),
+        ],
+      ),
       body: FutureBuilder<List<Transaksi>>(
         future: _transaksiList,
         builder: (context, snapshot) {

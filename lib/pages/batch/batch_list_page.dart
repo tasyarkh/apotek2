@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/batch_obat.dart';
 import '../../services/api_services.dart';
+import '../../utils/pdf_helper.dart'; // pastikan file PDFHelper ada
 import 'batch_form_page.dart';
 
 class BatchListPage extends StatefulWidget {
@@ -30,11 +31,14 @@ class _BatchListPageState extends State<BatchListPage> {
         title: const Text("Hapus Batch"),
         content: const Text("Yakin ingin menghapus data batch ini?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Batal")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Batal")),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
+            child:
+                const Text("Hapus", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -54,12 +58,41 @@ class _BatchListPageState extends State<BatchListPage> {
     if (result == true) setState(() => _loadData());
   }
 
+  Future<void> _printPDF(List<Batch> data) async {
+    await PDFHelper.printTable(
+      title: "Laporan Data Batch Obat",
+      headers: ["No Batch", "Nama Obat", "Stok", "Tgl Kedaluwarsa"],
+      data: data.map((b) => [
+        b.noBatch ?? '',
+        b.namaObat ?? '',
+        (b.stokTersedia ?? 0).toString(),
+        b.tglKedaluwarsa ?? '',
+      ]).toList(),
+
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Data Batch Obat"),
         backgroundColor: const Color(0xFF5F8D4E),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+            onPressed: () async {
+              final data = await _batchList;
+              if (data.isNotEmpty) {
+                await _printPDF(data);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Tidak ada data untuk dicetak")),
+                );
+              }
+            },
+          )
+        ],
       ),
       body: FutureBuilder<List<Batch>>(
         future: _batchList,
@@ -81,7 +114,9 @@ class _BatchListPageState extends State<BatchListPage> {
                 margin: const EdgeInsets.all(8),
                 child: ListTile(
                   title: Text("${b.noBatch} - ${b.namaObat ?? 'Tanpa Nama Obat'}"),
-                  subtitle: Text("Stok: ${b.stokTersedia} | Exp: ${b.tglKedaluwarsa}"),
+                  subtitle: Text(
+                    "Stok: ${b.stokTersedia ?? 0} | Exp: ${b.tglKedaluwarsa ?? '-'}",
+                  ),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'edit') _goToForm(batch: b);
