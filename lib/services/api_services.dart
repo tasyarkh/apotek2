@@ -50,9 +50,25 @@ class ApiService {
   }
 
   static Future<bool> hapusObat(int id) async {
-    final response = await http.delete(Uri.parse("${baseUrl}obat.php?id=$id"));
-    return response.statusCode == 200;
+  try {
+    final response = await http.delete(
+      Uri.parse("${baseUrl}obat.php?id_obat=$id"),
+    );
+
+    debugPrint("Response hapusObat (${response.statusCode}): ${response.body}");
+
+    if (response.statusCode == 200) {
+      final result = jsonDecode(response.body);
+      return result['success'] == true;
+    } else {
+      return false;
+    }
+  } catch (e) {
+    debugPrint("Error hapusObat: $e");
+    return false;
   }
+}
+
 
   // =======================================================
   // 🧾 BATCH OBAT

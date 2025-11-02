@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home_pages.dart'; // arahkan ke dashboard utama
+import './auth/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,10 +12,10 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 8), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        MaterialPageRoute(builder: (_) => const LoginPage()),
       );
     });
   }
@@ -23,14 +23,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF5F8D4E), // hijau utama
+      backgroundColor: const Color.fromARGB(255, 193, 236, 179),// hijau utama
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
               'assets/logo.png',
-              width: 180,
+              width: 250,
             ),
             const SizedBox(height: 30),
             const CircularProgressIndicator(
