@@ -4,6 +4,7 @@ import 'pemasok/pemasok_list_page.dart';
 import 'staff/staff_list_page.dart';
 import 'batch/batch_list_page.dart';
 import 'transaksi/transaksi_list_page.dart';
+import './auth/login_screen.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -19,7 +20,21 @@ class HomePage extends StatelessWidget {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            tooltip: 'Keluar',
+            onPressed: () {
+              // Arahkan ke halaman login
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+            },
+          ),
+        ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: GridView.count(
@@ -68,17 +83,16 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuCard(BuildContext context,
-      {required IconData icon,
-      required String title,
-      required Color color,
-      required Widget page}) {
+  Widget _buildMenuCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required Color color,
+    required Widget page,
+  }) {
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => page),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (_) => page));
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(
@@ -110,7 +124,7 @@ class HomePage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
-            )
+            ),
           ],
         ),
       ),

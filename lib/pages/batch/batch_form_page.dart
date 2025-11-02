@@ -38,7 +38,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
     if (widget.batch != null) {
       final b = widget.batch!;
       _selectedObatId = b.idObat;
-      _selectedPemasokId = b.idPemasok; // ✅ kalau sedang edit
+      _selectedPemasokId = b.idPemasok;
       _noBatchController.text = b.noBatch;
       _tglController.text = b.tglKedaluwarsa;
       _hargaBeliController.text = b.hargaBeli.toString();
@@ -61,13 +61,21 @@ class _BatchFormPageState extends State<BatchFormPage> {
   }
 
   Future<void> _loadObatDanPemasok() async {
-    final obatList = await ApiService.getObatList();
-    final pemasokList = await ApiService.getPemasokList();
-    if (!mounted) return;
-    setState(() {
-      _obatList = obatList;
-      _pemasokList = pemasokList;
-    });
+    try {
+      final obatList = await ApiService.getObatList();
+      final pemasokList = await ApiService.getPemasokList();
+      if (!mounted) return;
+      setState(() {
+        _obatList = obatList;
+        _pemasokList = pemasokList;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal memuat data: $e")),
+        );
+      }
+    }
   }
 
   Future<void> _selectDate() async {
@@ -104,10 +112,10 @@ class _BatchFormPageState extends State<BatchFormPage> {
       idPemasok: _selectedPemasokId!,
       noBatch: _noBatchController.text,
       tglKedaluwarsa: _tglController.text,
-      hargaBeli: double.parse(_hargaBeliController.text),
-      hargaJual: double.parse(_hargaJualController.text),
-      stokAwal: int.parse(_stokAwalController.text),
-      stokTersedia: int.parse(_stokTersediaController.text),
+      hargaBeli: double.tryParse(_hargaBeliController.text) ?? 0,
+      hargaJual: double.tryParse(_hargaJualController.text) ?? 0,
+      stokAwal: int.tryParse(_stokAwalController.text) ?? 0,
+      stokTersedia: int.tryParse(_stokTersediaController.text) ?? 0,
     );
 
     try {
@@ -154,16 +162,29 @@ class _BatchFormPageState extends State<BatchFormPage> {
           key: _formKey,
           child: ListView(
             children: [
-              // === Dropdown Obat ===
+              // === Dropdown Obat (otomatis isi stok) ===
               DropdownButtonFormField<int>(
                 value: _selectedObatId,
                 items: _obatList
                     .map((o) => DropdownMenuItem(
                           value: o.idObat,
-                          child: Text(o.namaObat),
+                          child: Text("${o.namaObat} (Stok: ${o.stok ?? 0})"),
                         ))
                     .toList(),
-                onChanged: (v) => setState(() => _selectedObatId = v),
+                onChanged: (v) {
+                  setState(() {
+                    _selectedObatId = v;
+                    // cari obat yang dipilih
+                    final selectedObat = _obatList.firstWhere(
+                      (ob) => ob.idObat == v,
+                      orElse: () => _obatList.first,
+                    );
+                    // isi stok awal otomatis
+                    _stokAwalController.text =
+                        (selectedObat.stok ?? 0).toString();
+                    _hitungStok();
+                  });
+                },
                 decoration: const InputDecoration(
                   labelText: "Pilih Obat",
                   border: OutlineInputBorder(),
@@ -192,7 +213,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
               ),
               const SizedBox(height: 12),
 
-              // === Input Nomor Batch ===
+              // === Nomor Batch ===
               TextFormField(
                 controller: _noBatchController,
                 decoration: const InputDecoration(
@@ -243,18 +264,17 @@ class _BatchFormPageState extends State<BatchFormPage> {
               ),
               const SizedBox(height: 12),
 
-              // === Stok Awal ===
+              // === Stok Sekarang (otomatis dari obat) ===
               TextFormField(
-                controller: _stokAwalController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: "Stok Sekarang",
-                  border: OutlineInputBorder(),
+                  controller: _stokAwalController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Stok Sekarang",
+                    border: OutlineInputBorder(),
+                  ),
+                  enabled: false, // ⛔️ membuat field tidak bisa diubah
                 ),
-                onChanged: (_) => _hitungStok(),
-                validator: (v) =>
-                    v!.isEmpty ? "Stok sekarang wajib diisi" : null,
-              ),
+
               const SizedBox(height: 12),
 
               // === Stok Tambahan ===

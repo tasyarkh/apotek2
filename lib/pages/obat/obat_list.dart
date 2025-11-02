@@ -113,9 +113,9 @@ class _ObatListPageState extends State<ObatListPage> {
                           "Stok: ${o.stok}", // 🔹 tampilkan stok dari DB
                           style: TextStyle(
                             fontSize: 13,
-                            color: o.stok > 0 ? Colors.black87 : Colors.redAccent,
-                            fontWeight:
-                                o.stok > 0 ? FontWeight.normal : FontWeight.bold,
+                            color: (o.stok ?? 0) > 0 ? Colors.black87 : Colors.redAccent,
+                            fontWeight: (o.stok ?? 0) > 0 ? FontWeight.normal : FontWeight.bold,
+
                           ),
                         ),
                       ],
