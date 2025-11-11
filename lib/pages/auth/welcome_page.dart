@@ -13,13 +13,13 @@ class WelcomePage extends StatelessWidget {
           children: [
             // Ganti dengan gambar ilustrasi atau logo lainnya
             Image.asset(
-              'images/welcome.png',
+              'assets/welcome.png',
               width: 200,
               height: 200,
             ),
             SizedBox(height: 40),
             Text(
-              'Selamat Datang di Aplikasi Apotek',
+              'Selamat Datang di Inventaris Apotek',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -28,7 +28,7 @@ class WelcomePage extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              'Kelola inventaris apotek Anda dengan mudah dan efisien.',
+              'Kelola inventaris apotek anda dengan mudah dan efisien.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[700],
@@ -41,7 +41,7 @@ class WelcomePage extends StatelessWidget {
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => LoginPage()));
               },
-              child: Text('Login'),
+              child: Text('Next'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF68A77C), // Warna hex
                 foregroundColor: Colors.white,

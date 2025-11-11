@@ -266,7 +266,6 @@ class ApiService {
   // 🧾 TRANSAKSI BARANG KELUAR
   // =======================================================
 
-  // ✅ ambil list transaksi
   static Future<List<Transaksi>> getTransaksiList() async {
     try {
       final response = await http.get(Uri.parse("${baseUrl}transaksi.php"));
@@ -282,7 +281,7 @@ class ApiService {
     }
   }
 
-  // ✅ tambah transaksi utama
+  // ✅ Tambah transaksi utama (header transaksi)
   static Future<Map<String, dynamic>?> tambahTransaksiSimple({
     required int idStaff,
     String? keterangan,
@@ -297,8 +296,11 @@ class ApiService {
           'keterangan': keterangan ?? '',
         }),
       );
+
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else {
+        debugPrint("Gagal tambahTransaksiSimple: ${response.body}");
       }
     } catch (e) {
       debugPrint("Error tambahTransaksiSimple: $e");
@@ -306,10 +308,10 @@ class ApiService {
     return null;
   }
 
-  // ✅ tambah detail transaksi keluar
-  static Future<bool> tambahDetailBarangKeluar({
+  // ✅ Tambah detail transaksi barang keluar (langsung ke OBAT, bukan batch)
+    static Future<bool> tambahDetailBarangKeluar({
     required int idTransaksi,
-    required int idBatch,
+    required int idObat,
     required int jumlah,
     required double subtotal,
   }) async {
@@ -319,14 +321,19 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'id_transaksi': idTransaksi,
-          'id_batch': idBatch,
+          'id_obat': idObat,
           'jumlah': jumlah,
           'subtotal': subtotal,
         }),
       );
+
+      debugPrint("🧾 [DETAIL RESP] ${response.body}");
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         return result['success'] == true;
+      } else {
+        debugPrint("Gagal tambahDetailBarangKeluar: ${response.body}");
       }
     } catch (e) {
       debugPrint("Error tambahDetailBarangKeluar: $e");
@@ -334,7 +341,8 @@ class ApiService {
     return false;
   }
 
-  // ✅ hapus transaksi
+
+  // ✅ Hapus transaksi
   static Future<bool> hapusTransaksi(int id) async {
     try {
       final response = await http.delete(
@@ -351,7 +359,7 @@ class ApiService {
     }
   }
 
-  // ✅ tambah transaksi manual
+  // ✅ Tambah transaksi manual (tidak digunakan untuk detail)
   static Future<bool> tambahTransaksi(Transaksi trx) async {
     try {
       final response = await http.post(
@@ -372,4 +380,5 @@ class ApiService {
       return false;
     }
   }
+
 }

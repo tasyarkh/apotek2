@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/staff.dart';
-import '../../models/batch_obat.dart';
+import '../../models/obat.dart'; // ✅ ubah dari batch_obat.dart
 import '../../models/transaksi.dart';
 import '../../services/api_services.dart';
 
@@ -18,10 +18,10 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
   final _jumlahController = TextEditingController();
 
   List<Staff> _staffList = [];
-  List<Batch> _batchList = [];
+  List<Obat> _obatList = []; // ✅ ganti dari List<Batch> ke List<Obat>
 
   int? _selectedStaffId;
-  int? _selectedBatchId;
+  int? _selectedObatId; // ✅ ganti dari _selectedBatchId
   double? _hargaJual;
   bool _isSaving = false;
 
@@ -38,11 +38,11 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
 
   Future<void> _loadData() async {
     final staff = await ApiService.getStaffList();
-    final batch = await ApiService.getBatchList();
+    final obat = await ApiService.getObatList(); // ✅ ganti dari getBatchList()
     if (mounted) {
       setState(() {
         _staffList = staff;
-        _batchList = batch;
+        _obatList = obat;
       });
     }
   }
@@ -50,7 +50,7 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
   Future<void> _simpanTransaksi() async {
     if (_isSaving || !_formKey.currentState!.validate()) return;
 
-    if (_selectedStaffId == null || _selectedBatchId == null) {
+    if (_selectedStaffId == null || _selectedObatId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Pilih staff dan obat terlebih dahulu")),
       );
@@ -60,7 +60,6 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
     setState(() => _isSaving = true);
 
     try {
-      // 🧾 1. Tambah transaksi utama dulu
       final response = await ApiService.tambahTransaksiSimple(
         idStaff: _selectedStaffId!,
         keterangan: _keteranganController.text,
@@ -75,30 +74,27 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
         throw Exception("ID transaksi tidak diterima dari server");
       }
 
-      // 📦 2. Tambah detail transaksi (barang keluar)
       final jumlah = int.parse(_jumlahController.text);
       final harga = _hargaJual ?? 0;
       final subtotal = jumlah * harga;
 
       final detailSuccess = await ApiService.tambahDetailBarangKeluar(
         idTransaksi: idTransaksi,
-        idBatch: _selectedBatchId!,
+        idObat: _selectedObatId!,
         jumlah: jumlah,
         subtotal: subtotal,
       );
 
-      if (!detailSuccess) throw Exception("Gagal menambah detail transaksi");
-
-      // 🎉 Berhasil
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Barang keluar berhasil dicatat")),
-      );
-      Navigator.pop(context, true);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Gagal menyimpan: $e")),
-      );
-    } finally {
+      if (detailSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ Barang keluar berhasil dicatat")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ Gagal menyimpan transaksi")),
+        );
+      }
+      } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
@@ -137,33 +133,31 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
               ),
               const SizedBox(height: 12),
 
-              // 💊 OBAT / BATCH
+              // 💊 OBAT (ganti dari Batch)
               DropdownButtonFormField<int>(
-                value: _selectedBatchId,
+                value: _selectedObatId,
                 decoration: const InputDecoration(
-                  labelText: "Pilih Batch Obat",
+                  labelText: "Pilih Obat",
                   border: OutlineInputBorder(),
                 ),
-                items: _batchList
-                    .map((b) => DropdownMenuItem(
-                          value: b.idBatch,
-                          child: Text("${b.namaObat ?? ''} (${b.noBatch})"),
+                items: _obatList
+                    .map((o) => DropdownMenuItem(
+                          value: o.idObat,
+                          child: Text("${o.namaObat} (Stok: ${o.stok})"),
                         ))
                     .toList(),
                 onChanged: (v) {
-                  final selected =
-                      _batchList.firstWhere((b) => b.idBatch == v);
+                  final selected = _obatList.firstWhere((o) => o.idObat == v);
                   setState(() {
-                    _selectedBatchId = v;
-                    _hargaJual = selected.hargaJual;
+                    _selectedObatId = v;
                   });
                 },
                 validator: (v) =>
-                    v == null ? "Pilih batch obat terlebih dahulu" : null,
+                    v == null ? "Pilih obat terlebih dahulu" : null,
               ),
               const SizedBox(height: 12),
 
-              // 🔢 JUMLAH KELUAR
+              // 🔢 JUMLAH
               TextFormField(
                 controller: _jumlahController,
                 keyboardType: TextInputType.number,
