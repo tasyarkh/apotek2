@@ -164,14 +164,19 @@ class _TransaksiListPageState extends State<TransaksiListPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const TransaksiFormPage()),
           );
-          _refresh();
+
+          // ✅ Jika form mengembalikan 'true', artinya data baru berhasil ditambahkan
+          if (result == true) {
+            _refresh();
+          }
         },
         child: const Icon(Icons.add),
       ),
+
     );
   }
 }

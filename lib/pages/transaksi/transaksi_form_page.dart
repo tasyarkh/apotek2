@@ -48,56 +48,75 @@ class _TransaksiFormPageState extends State<TransaksiFormPage> {
   }
 
   Future<void> _simpanTransaksi() async {
-    if (_isSaving || !_formKey.currentState!.validate()) return;
+  if (_isSaving || !_formKey.currentState!.validate()) return;
 
-    if (_selectedStaffId == null || _selectedObatId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pilih staff dan obat terlebih dahulu")),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
-    try {
-      final response = await ApiService.tambahTransaksiSimple(
-        idStaff: _selectedStaffId!,
-        keterangan: _keteranganController.text,
-      );
-
-      if (response == null || response['success'] != true) {
-        throw Exception("Gagal membuat transaksi utama");
-      }
-
-      final idTransaksi = response['id_transaksi'];
-      if (idTransaksi == null) {
-        throw Exception("ID transaksi tidak diterima dari server");
-      }
-
-      final jumlah = int.parse(_jumlahController.text);
-      final harga = _hargaJual ?? 0;
-      final subtotal = jumlah * harga;
-
-      final detailSuccess = await ApiService.tambahDetailBarangKeluar(
-        idTransaksi: idTransaksi,
-        idObat: _selectedObatId!,
-        jumlah: jumlah,
-        subtotal: subtotal,
-      );
-
-      if (detailSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ Barang keluar berhasil dicatat")),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ Gagal menyimpan transaksi")),
-        );
-      }
-      } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+  if (_selectedStaffId == null || _selectedObatId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Pilih staff dan obat terlebih dahulu")),
+    );
+    return;
   }
+
+  setState(() => _isSaving = true);
+
+  try {
+    // 🔹 Simpan transaksi utama
+    final response = await ApiService.tambahTransaksiSimple(
+      idStaff: _selectedStaffId!,
+      keterangan: _keteranganController.text,
+    );
+
+    if (response == null || response['success'] != true) {
+      throw Exception("Gagal membuat transaksi utama");
+    }
+
+    final idTransaksi = response['id_transaksi'];
+    if (idTransaksi == null) {
+      throw Exception("ID transaksi tidak diterima dari server");
+    }
+
+    // 🔹 Simpan detail transaksi
+    final jumlah = int.parse(_jumlahController.text);
+    final harga = _hargaJual ?? 0;
+    final subtotal = jumlah * harga;
+
+    final detailSuccess = await ApiService.tambahDetailBarangKeluar(
+      idTransaksi: idTransaksi,
+      idObat: _selectedObatId!,
+      jumlah: jumlah,
+      subtotal: subtotal,
+    );
+
+    if (detailSuccess) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ Transaksi berhasil disimpan"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        // 🔹 Tunggu sedikit agar snackbar terlihat
+        await Future.delayed(const Duration(seconds: 1));
+        Navigator.pop(context, true); // ✅ Kembali ke list transaksi
+      }
+    } else {
+      throw Exception("Gagal menyimpan detail transaksi");
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Gagal menyimpan transaksi: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isSaving = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
