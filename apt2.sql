@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 02, 2025 at 08:16 AM
+-- Generation Time: Nov 14, 2025 at 04:18 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -44,43 +44,36 @@ CREATE TABLE `batch_obat` (
 --
 
 INSERT INTO `batch_obat` (`id_batch`, `id_obat`, `id_pemasok`, `no_batch`, `tgl_kedaluwarsa`, `harga_beli`, `harga_jual`, `stok_awal`, `stok_tersedia`) VALUES
-(2, 4, 1, 'BCH-2025-1', '2027-11-01', 12000.00, 13000.00, 0, 80);
+(1, 3, 2, 'CET-14-11', '2027-11-16', 15000.00, 12000.00, 0, 250),
+(2, 2, 1, 'AMB-14-11', '2026-11-14', 14500.00, 16000.00, 0, 200),
+(3, 3, 1, 'CET-17-11', '2027-11-01', 14000.00, 15000.00, 250, 350);
 
 --
 -- Triggers `batch_obat`
 --
 DELIMITER $$
-CREATE TRIGGER `after_batch_delete` AFTER DELETE ON `batch_obat` FOR EACH ROW BEGIN
+CREATE TRIGGER `rollback_stok_batch` AFTER DELETE ON `batch_obat` FOR EACH ROW BEGIN
   UPDATE obat
-  SET stok = (
-    SELECT COALESCE(SUM(stok_tersedia), 0)
-    FROM batch_obat
-    WHERE id_obat = OLD.id_obat
-  )
+  SET stok = stok - OLD.stok_tersedia
   WHERE id_obat = OLD.id_obat;
 END
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `after_batch_insert` AFTER INSERT ON `batch_obat` FOR EACH ROW BEGIN
+CREATE TRIGGER `tambah_stok_batch` AFTER INSERT ON `batch_obat` FOR EACH ROW BEGIN
   UPDATE obat
-  SET stok = (
-    SELECT COALESCE(SUM(stok_tersedia), 0)
-    FROM batch_obat
-    WHERE id_obat = NEW.id_obat
-  )
+  SET stok = stok + NEW.stok_tersedia
   WHERE id_obat = NEW.id_obat;
 END
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `after_batch_update` AFTER UPDATE ON `batch_obat` FOR EACH ROW BEGIN
+CREATE TRIGGER `update_stok_batch` AFTER UPDATE ON `batch_obat` FOR EACH ROW BEGIN
+  DECLARE selisih INT;
+  SET selisih = NEW.stok_tersedia - OLD.stok_tersedia;
+
   UPDATE obat
-  SET stok = (
-    SELECT COALESCE(SUM(stok_tersedia), 0)
-    FROM batch_obat
-    WHERE id_obat = NEW.id_obat
-  )
+  SET stok = stok + selisih
   WHERE id_obat = NEW.id_obat;
 END
 $$
@@ -95,7 +88,7 @@ DELIMITER ;
 CREATE TABLE `detail_transaksi` (
   `id_detail` int(11) NOT NULL,
   `id_transaksi` int(11) NOT NULL,
-  `id_batch` int(11) NOT NULL,
+  `id_obat` int(11) NOT NULL,
   `jumlah` int(11) NOT NULL,
   `subtotal` double DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -104,33 +97,36 @@ CREATE TABLE `detail_transaksi` (
 -- Dumping data for table `detail_transaksi`
 --
 
-INSERT INTO `detail_transaksi` (`id_detail`, `id_transaksi`, `id_batch`, `jumlah`, `subtotal`) VALUES
-(4, 4, 2, 10, 130000);
+INSERT INTO `detail_transaksi` (`id_detail`, `id_transaksi`, `id_obat`, `jumlah`, `subtotal`) VALUES
+(1, 1, 3, 250, 0);
 
 --
 -- Triggers `detail_transaksi`
 --
 DELIMITER $$
-CREATE TRIGGER `kurang_stok_obat` BEFORE INSERT ON `detail_transaksi` FOR EACH ROW BEGIN
-  DECLARE v_stok INT;
-  DECLARE v_id_obat INT;
+CREATE TRIGGER `kurang_stok_transaksi` AFTER INSERT ON `detail_transaksi` FOR EACH ROW BEGIN
+  UPDATE obat
+  SET stok = stok - NEW.jumlah
+  WHERE id_obat = NEW.id_obat;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `rollback_stok_transaksi` AFTER DELETE ON `detail_transaksi` FOR EACH ROW BEGIN
+  UPDATE obat
+  SET stok = stok + OLD.jumlah
+  WHERE id_obat = OLD.id_obat;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `update_stok_transaksi` AFTER UPDATE ON `detail_transaksi` FOR EACH ROW BEGIN
+  DECLARE selisih INT;
+  SET selisih = NEW.jumlah - OLD.jumlah;
 
-  SELECT stok_tersedia, id_obat INTO v_stok, v_id_obat
-  FROM batch_obat
-  WHERE id_batch = NEW.id_batch;
-
-  IF v_stok < NEW.jumlah THEN
-    SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = '❌ Stok batch tidak mencukupi!';
-  ELSE
-    UPDATE batch_obat
-    SET stok_tersedia = stok_tersedia - NEW.jumlah
-    WHERE id_batch = NEW.id_batch;
-
-    UPDATE obat
-    SET stok = stok - NEW.jumlah
-    WHERE id_obat = v_id_obat;
-  END IF;
+  UPDATE obat
+  SET stok = stok - selisih
+  WHERE id_obat = NEW.id_obat;
 END
 $$
 DELIMITER ;
@@ -156,11 +152,10 @@ CREATE TABLE `obat` (
 --
 
 INSERT INTO `obat` (`id_obat`, `nama_obat`, `bentuk`, `kandungan`, `satuan`, `kategori`, `stok`) VALUES
-(2, 'Tolak Angin Cair', 'Sirup', 'Untuk meredakan masuk angin dan meningkatkan daya tahan tubuh', 'Tube', 'Herbal', 0),
-(4, 'Paracetamol 500mg', 'Tablet', 'Untuk menurunkan demam dan meredakan nyeri ringan', 'Strip', 'Generik', 80),
-(5, 'Amoxicillin 400mg', 'Kapsul', 'Untuk mengobati infeksi bakteri seperti infeksi saluran pernapasan dan telinga', 'Strip', 'Generik', 0),
-(7, 'tesa', 'Kapsul', 'e', 'Strip', 'Generik', 0),
-(8, 'Milanta', 'Sirup', 'Obat Pereda Magh', 'Botol', 'Generik', 0);
+(1, 'Paracetamol 500mg', 'Tablet', 'Obat Pereda Demam', 'Strip', 'Generik', 0),
+(2, 'Ambroxol', 'Sirup', 'Batuk Flu', 'Botol', 'Generik', 200),
+(3, 'Cetirizine', 'Tablet', 'Antihistamin', 'Strip', 'Paten', 350),
+(6, 'Ranitidine', 'Tablet', 'Asam Lambung', 'Strip', 'Paten', 0);
 
 -- --------------------------------------------------------
 
@@ -180,11 +175,10 @@ CREATE TABLE `pemasok` (
 --
 
 INSERT INTO `pemasok` (`id_pemasok`, `nama_pemasok`, `alamat`, `kontak`) VALUES
-(1, 'PT. Jaya Sehat Sejahtera', 'Jl.Jatiwaringin No.2 Bekasi', 'jayasehat@gmail.com'),
-(3, 'PT. Sinar Sehat', 'Jl. Meruya Jakarta Barat No.8', 'sinar@gmail.com'),
-(4, 'PT Sanbe Farma', 'Jl. Industri No. 10, Bandung', 'contact@sanbefarma.com'),
-(5, 'CV Herbalindo Nusantara', 'Jl. Raya Sukabumi No. 15, Bogor', 'cs@herbalindo.co.id'),
-(7, 'PT. Healthy Jaya 1', 'Jl. Sejahtera Jatiwaringin No.21', 'hekthy@gmail.com');
+(1, 'PT Kimia Farma Trading', 'Jl. Veteran No. 10, Jakarta', '0215678901'),
+(2, 'PT Hexpharm Jaya', 'Jl. Industri No. 7, Bekasi', '0215678902'),
+(3, 'PT Sanbe Farma', 'Jl. Soekarno Hatta No. 88, Bandung', '0225678904'),
+(5, 'PT Soho Global Health', 'Jl. Pulogadung Industrial Estate, Jakarta', 'soho@gmail.com');
 
 -- --------------------------------------------------------
 
@@ -204,12 +198,10 @@ CREATE TABLE `staff` (
 --
 
 INSERT INTO `staff` (`id_staff`, `nama_staff`, `username`, `password`) VALUES
-(1, 'Andi Pratama', 'andi.pr', '$2y$10$X3rUWXU6yCd/dIr3tfI5E.QmS2BTvr4.SxM9.cfdJEPs1K/nFw4b6'),
-(2, 'Ayuna Putri', 'ayput', '$2y$10$0kFEtdUisZrMJuX0aBDQruUsnp4Qt8z8nKlcQBgeJGtoHf5yOmdvG'),
-(4, 'Siti Rahmawati', 'siti', '$2y$10$mbBRpWC8/VzJeTZaVrKbvO1hNESqOK5VETj.DcAa8YRCJKQLTXHmC'),
-(5, 'Dewi Lestari', 'dewi', '$2y$10$u/r/gASJqjspwm7pRZiAJOkE8AUjnykr/uLZcCPVVWKTC4w117FKK'),
-(6, 'Khoirunnisa Caca', 'caca', '$2y$10$yogrnBv1aTds/dh1Zw7FmuPlQzzFsR7GQbIgsYr/l.zO0/3H/xDzO'),
-(8, 'Hafiza Bilqis', 'hafida', '$2y$10$OlWtuO.RrK5vH4k7oGj.RePDZWT9Uh4NXEMvsGbO57IV77LEEj9Yi');
+(1, 'Andi Saputra', 'Andi S', '$2y$10$KmcmhNrMtMp4IPyGxuRikuM2U6tvq7NBf7eEDg4SxpQDDFnryzOYG'),
+(2, 'Siti Rahmawati', 'Siti R', '$2y$10$jJSBSbZKkzD8z4QP/YyM2uJdC/ik7j4Fvyp4yjzWZFl89c/uh7/0e'),
+(3, 'Dewi Lestari', 'Dewi L', '$2y$10$H8pJ5xDB6cgUKeKp22cm2u8hP53ZvPiyVXNw6LUETqJ/UlpAKjWBe'),
+(5, 'Fajar Nugraha', 'Fajar N', '$2y$10$pxxMtU1AmqcC8OkLjjZ.N.DqAsPQsRn.bh70UX30PMmB0O2vEaoKS');
 
 -- --------------------------------------------------------
 
@@ -229,7 +221,7 @@ CREATE TABLE `transaksi` (
 --
 
 INSERT INTO `transaksi` (`id_transaksi`, `tgl_transaksi`, `id_staff`, `keterangan`) VALUES
-(4, '2025-10-31', 6, 'Pengeluaran Tanggal 10');
+(1, '2025-11-14', 2, 'Obat Cetirizine Keluar Per Tanggal Sekian');
 
 --
 -- Indexes for dumped tables
@@ -250,7 +242,7 @@ ALTER TABLE `batch_obat`
 ALTER TABLE `detail_transaksi`
   ADD PRIMARY KEY (`id_detail`),
   ADD KEY `id_transaksi` (`id_transaksi`),
-  ADD KEY `id_batch` (`id_batch`);
+  ADD KEY `id_obat` (`id_obat`);
 
 --
 -- Indexes for table `obat`
@@ -287,37 +279,37 @@ ALTER TABLE `transaksi`
 -- AUTO_INCREMENT for table `batch_obat`
 --
 ALTER TABLE `batch_obat`
-  MODIFY `id_batch` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_batch` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `detail_transaksi`
 --
 ALTER TABLE `detail_transaksi`
-  MODIFY `id_detail` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_detail` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `obat`
 --
 ALTER TABLE `obat`
-  MODIFY `id_obat` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id_obat` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `pemasok`
 --
 ALTER TABLE `pemasok`
-  MODIFY `id_pemasok` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id_pemasok` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `staff`
 --
 ALTER TABLE `staff`
-  MODIFY `id_staff` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id_staff` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `transaksi`
 --
 ALTER TABLE `transaksi`
-  MODIFY `id_transaksi` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_transaksi` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- Constraints for dumped tables
@@ -334,8 +326,8 @@ ALTER TABLE `batch_obat`
 -- Constraints for table `detail_transaksi`
 --
 ALTER TABLE `detail_transaksi`
-  ADD CONSTRAINT `detail_transaksi_ibfk_1` FOREIGN KEY (`id_transaksi`) REFERENCES `transaksi` (`id_transaksi`) ON DELETE CASCADE,
-  ADD CONSTRAINT `detail_transaksi_ibfk_2` FOREIGN KEY (`id_batch`) REFERENCES `batch_obat` (`id_batch`) ON DELETE CASCADE;
+  ADD CONSTRAINT `detail_transaksi_fk_obat` FOREIGN KEY (`id_obat`) REFERENCES `obat` (`id_obat`) ON DELETE CASCADE,
+  ADD CONSTRAINT `detail_transaksi_fk_transaksi` FOREIGN KEY (`id_transaksi`) REFERENCES `transaksi` (`id_transaksi`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `transaksi`

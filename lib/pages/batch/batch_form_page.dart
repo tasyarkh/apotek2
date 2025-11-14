@@ -217,7 +217,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
               TextFormField(
                 controller: _noBatchController,
                 decoration: const InputDecoration(
-                  labelText: "Nomor Batch",
+                  labelText: "Nomor Batch Contoh (3DIGIT NAMA OBAT-TGL-BLN)",
                   border: OutlineInputBorder(),
                 ),
                 validator: (v) =>

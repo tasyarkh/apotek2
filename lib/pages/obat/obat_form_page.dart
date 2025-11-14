@@ -119,7 +119,7 @@ class _ObatFormPageState extends State<ObatFormPage> {
               // KANDUNGAN
               TextFormField(
                 controller: _kandunganController,
-                decoration: const InputDecoration(labelText: "Kandungan / Komposisi"),
+                decoration: const InputDecoration(labelText: "Kegunaan Obat"),
               ),
 
               // SATUAN

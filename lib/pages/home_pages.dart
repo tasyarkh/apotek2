@@ -4,7 +4,7 @@ import 'pemasok/pemasok_list_page.dart';
 import 'staff/staff_list_page.dart';
 import 'batch/batch_list_page.dart';
 import 'transaksi/transaksi_list_page.dart';
-import './auth/login_screen.dart';
+import './auth/welcome_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -25,10 +25,10 @@ class HomePage extends StatelessWidget {
             icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Keluar',
             onPressed: () {
-              // Arahkan ke halaman login
+              // Arahkan ke halaman Wlcome
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const LoginPage()),
+                MaterialPageRoute(builder: (_) => WelcomePage()),
               );
             },
           ),
