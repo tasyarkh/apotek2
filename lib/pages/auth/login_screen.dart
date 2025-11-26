@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 import '../home_pages.dart';
+import '../../services/login_service.dart';
+
+
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
-
-  @override
-  State<LoginPage> createState() => _LoginPageState();
+  const LoginPage({Key? key}) : super(key: key);
+  _LoginPageState createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _usernameCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Image.asset(
-          'assets/logo.png', // Pastikan file ini tersedia
+          'assets/logo.png',
           height: 40,
         ),
         backgroundColor: Colors.transparent,
@@ -41,30 +46,32 @@ class _LoginPageState extends State<LoginPage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 35),
-            const TextField(
-              decoration: InputDecoration(
+
+            // Username
+            TextField(
+              controller: _usernameCtrl,
+              decoration:  InputDecoration(
                 labelText: "Username",
                 prefixIcon: Icon(Icons.account_circle_outlined),
               ),
             ),
             const SizedBox(height: 15),
-            const TextField(
+
+            // Password
+            TextField(
+              controller: _passwordCtrl,
               obscureText: true,
-              decoration: InputDecoration(
+              decoration:  InputDecoration(
                 labelText: "Password",
                 prefixIcon: Icon(Icons.lock_clock_outlined),
               ),
             ),
             const SizedBox(height: 45),
+
+            // Tombol Login
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const HomePage()),
-                    (route) => false,
-                  );
-                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF68A77C),
                   foregroundColor: Colors.white,
@@ -74,6 +81,35 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 child: const Text('Login'),
+                onPressed: () async {
+                  String username = _usernameCtrl.text;
+                  String password = _passwordCtrl.text;
+
+                  bool result =
+                      await LoginService().login(username, password);
+
+                  if (result == true) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HomePage(),
+                      ),
+                    );
+                  } else {
+                    AlertDialog alertDialog = AlertDialog(
+                      content: const Text("Username atau Password Tidak Valid"),
+                      actions: [
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: const Text("OK"),
+                        ),
+                      ],
+                    );
+                    showDialog(context: context, builder: (context) => alertDialog);
+                  }
+                },
               ),
             ),
           ],
