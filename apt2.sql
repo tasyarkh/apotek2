@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 14, 2025 at 04:18 PM
+-- Generation Time: Nov 27, 2025 at 03:57 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -46,7 +46,9 @@ CREATE TABLE `batch_obat` (
 INSERT INTO `batch_obat` (`id_batch`, `id_obat`, `id_pemasok`, `no_batch`, `tgl_kedaluwarsa`, `harga_beli`, `harga_jual`, `stok_awal`, `stok_tersedia`) VALUES
 (1, 3, 2, 'CET-14-11', '2027-11-16', 15000.00, 12000.00, 0, 250),
 (2, 2, 1, 'AMB-14-11', '2026-11-14', 14500.00, 16000.00, 0, 200),
-(3, 3, 1, 'CET-17-11', '2027-11-01', 14000.00, 15000.00, 250, 350);
+(3, 3, 1, 'CET-17-11', '2027-11-01', 14000.00, 15000.00, 250, 350),
+(4, 1, 5, 'PAR-26-11', '2030-11-26', 10000.00, 10500.00, 0, 180),
+(5, 2, 2, 'AMB-28-11', '2029-11-21', 20000.00, 21000.00, 200, 300);
 
 --
 -- Triggers `batch_obat`
@@ -62,7 +64,7 @@ DELIMITER ;
 DELIMITER $$
 CREATE TRIGGER `tambah_stok_batch` AFTER INSERT ON `batch_obat` FOR EACH ROW BEGIN
   UPDATE obat
-  SET stok = stok + NEW.stok_tersedia
+  SET stok = NEW.stok_tersedia
   WHERE id_obat = NEW.id_obat;
 END
 $$
@@ -152,8 +154,8 @@ CREATE TABLE `obat` (
 --
 
 INSERT INTO `obat` (`id_obat`, `nama_obat`, `bentuk`, `kandungan`, `satuan`, `kategori`, `stok`) VALUES
-(1, 'Paracetamol 500mg', 'Tablet', 'Obat Pereda Demam', 'Strip', 'Generik', 0),
-(2, 'Ambroxol', 'Sirup', 'Batuk Flu', 'Botol', 'Generik', 200),
+(1, 'Paracetamol 500mg', 'Tablet', 'Obat Pereda Demam', 'Strip', 'Generik', 180),
+(2, 'Ambroxol', 'Sirup', 'Batuk Flu', 'Botol', 'Generik', 300),
 (3, 'Cetirizine', 'Tablet', 'Antihistamin', 'Strip', 'Paten', 350),
 (6, 'Ranitidine', 'Tablet', 'Asam Lambung', 'Strip', 'Paten', 0);
 
@@ -279,7 +281,7 @@ ALTER TABLE `transaksi`
 -- AUTO_INCREMENT for table `batch_obat`
 --
 ALTER TABLE `batch_obat`
-  MODIFY `id_batch` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_batch` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `detail_transaksi`
